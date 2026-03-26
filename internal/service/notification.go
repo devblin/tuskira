@@ -95,6 +95,10 @@ func (s *NotificationService) ListByRecipient(recipient string) ([]model.Notific
 	return s.repo.FindByRecipient(recipient)
 }
 
+func (s *NotificationService) ListSent() ([]model.Notification, error) {
+	return s.repo.FindSent()
+}
+
 func (s *NotificationService) GetPendingScheduled() ([]model.Notification, error) {
 	return s.repo.FindPendingScheduled()
 }

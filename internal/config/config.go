@@ -12,8 +12,6 @@ type Config struct {
 
 	QueueProvider     string
 	SchedulerProvider string
-	EventKey          string
-	InngestAppID      string
 
 	JWTSecret string
 	JWTExpiry string
@@ -28,10 +26,8 @@ func Load() *Config {
 		DBName:     getEnv("DB_NAME", "tuskira"),
 		ServerPort: getEnv("SERVER_PORT", "8080"),
 
-		QueueProvider:     getEnv("QUEUE_PROVIDER", "inngest"),
-		SchedulerProvider: getEnv("SCHEDULER_PROVIDER", "inngest"),
-		EventKey:          getEnv("EVENT_KEY", ""),
-		InngestAppID:      getEnv("INNGEST_APP_ID", "tuskira"),
+		QueueProvider:     getEnv("QUEUE_PROVIDER", "river"),
+		SchedulerProvider: getEnv("SCHEDULER_PROVIDER", "river"),
 
 		JWTSecret: getEnv("JWT_SECRET", "change-me-in-production"),
 		JWTExpiry: getEnv("JWT_EXPIRY", "24h"),

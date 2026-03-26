@@ -19,6 +19,7 @@ func RegisterRoutes(e *echo.Echo, ah *AuthHandler, nh *NotificationHandler, th *
 	api := e.Group("/api/v1", middleware.JWTMiddleware(jwtSecret))
 
 	api.POST("/notifications", nh.Send)
+	api.GET("/notifications/sent", nh.ListSent)
 	api.GET("/notifications/scheduled", nh.GetPendingScheduled)
 	api.GET("/notifications/:id", nh.GetByID)
 	api.GET("/notifications", nh.ListByRecipient)

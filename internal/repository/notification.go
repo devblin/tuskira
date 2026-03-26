@@ -43,6 +43,12 @@ func (r *NotificationRepository) FindPendingScheduled() ([]model.Notification, e
 	return notifications, err
 }
 
+func (r *NotificationRepository) FindSent() ([]model.Notification, error) {
+	var notifications []model.Notification
+	err := r.db.Where("status IN ?", []model.Status{model.StatusSent, model.StatusFailed}).Order("created_at desc").Find(&notifications).Error
+	return notifications, err
+}
+
 func (r *NotificationRepository) FindTemplateByID(id uint) (*model.Template, error) {
 	var t model.Template
 	if err := r.db.First(&t, id).Error; err != nil {

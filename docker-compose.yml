@@ -13,17 +13,15 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
-  inngest:
-    container_name: inngest
-    image: inngest/inngest:latest
-    ports:
-      - "8288:8288"
-    command: ["inngest", "dev", "-u", "http://app:8080/api/inngest"]
   app:
     container_name: app
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
+    volumes:
+      - .:/app
     environment:
       DB_HOST: postgres
       DB_PORT: "5432"
@@ -31,16 +29,12 @@ services:
       DB_PASSWORD: postgres
       DB_NAME: tuskira
       SERVER_PORT: "8080"
-      QUEUE_PROVIDER: inngest
-      SCHEDULER_PROVIDER: inngest
-      EVENT_KEY: ""
-      INNGEST_APP_ID: tuskira
+      QUEUE_PROVIDER: river
+      SCHEDULER_PROVIDER: river
       JWT_SECRET: super-secret-change-me
       JWT_EXPIRY: 24h
     depends_on:
       postgres:
-        condition: service_started
-      inngest:
         condition: service_started
 
 volumes:

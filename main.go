@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"github.com/devblin/tuskira/internal/provider"
 	"github.com/devblin/tuskira/internal/repository"
 	"github.com/devblin/tuskira/internal/service"
+	"github.com/devblin/tuskira/migrations"
 	"github.com/devblin/tuskira/pkg/database"
 	"github.com/devblin/tuskira/pkg/queue"
 	"github.com/devblin/tuskira/pkg/scheduler"
@@ -26,12 +28,23 @@ func main() {
 	cfg := config.Load()
 	db := database.Init(cfg)
 
-	// Queue and scheduler (provider chosen via config)
-	q, err := queue.New(queue.Config{Provider: cfg.QueueProvider, EventKey: cfg.EventKey, AppID: cfg.InngestAppID})
+	// Set up pgx pool and run River migrations
+	pgxPool, err := database.NewPgxPool(context.Background(), cfg)
+	if err != nil {
+		log.Fatalf("failed to create pgx pool: %v", err)
+	}
+	defer pgxPool.Close()
+
+	if err := migrations.RunRiverMigrations(context.Background(), pgxPool); err != nil {
+		log.Fatalf("failed to run river migrations: %v", err)
+	}
+
+	// Queue and scheduler
+	q, err := queue.New(queue.Config{Provider: cfg.QueueProvider, Pool: pgxPool})
 	if err != nil {
 		log.Fatalf("failed to init queue: %v", err)
 	}
-	sched, err := scheduler.New(scheduler.Config{Provider: cfg.SchedulerProvider, EventKey: cfg.EventKey, AppID: cfg.InngestAppID})
+	sched, err := scheduler.New(scheduler.Config{Provider: cfg.SchedulerProvider, Pool: pgxPool})
 	if err != nil {
 		log.Fatalf("failed to init scheduler: %v", err)
 	}
@@ -58,6 +71,28 @@ func main() {
 	tmplSvc := service.NewTemplateService(tmplRepo)
 	authSvc := service.NewAuthService(userRepo, cfg.JWTSecret, jwtExpiry)
 
+	// Set up River worker handlers and start processing
+	sched.SetHandler(func(ctx context.Context, externalID string, payload []byte) error {
+		var data struct {
+			NotificationID uint `json:"notification_id"`
+		}
+		if err := json.Unmarshal(payload, &data); err != nil {
+			return fmt.Errorf("failed to unmarshal scheduled job payload: %w", err)
+		}
+		_, err := notifSvc.SendByID(data.NotificationID)
+		return err
+	})
+
+	workerCtx, workerCancel := context.WithCancel(context.Background())
+	defer workerCancel()
+
+	if err := q.Start(workerCtx); err != nil {
+		log.Fatalf("failed to start queue workers: %v", err)
+	}
+	if err := sched.Start(workerCtx); err != nil {
+		log.Fatalf("failed to start scheduler workers: %v", err)
+	}
+
 	// HTTP server
 	e := echo.New()
 	e.Use(middleware.Logger())
@@ -67,6 +102,9 @@ func main() {
 	nh := handler.NewNotificationHandler(notifSvc)
 	th := handler.NewTemplateHandler(tmplSvc)
 	handler.RegisterRoutes(e, ah, nh, th, cfg.JWTSecret)
+	e.File("/web", "web/index.html")
+	e.File("/web/", "web/index.html")
+	e.Static("/web", "web")
 
 	// Graceful shutdown
 	go func() {
@@ -81,6 +119,16 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	// Stop River workers gracefully
+	workerCancel()
+	if err := q.Stop(ctx); err != nil {
+		log.Printf("queue worker stop error: %v", err)
+	}
+	if err := sched.Stop(ctx); err != nil {
+		log.Printf("scheduler worker stop error: %v", err)
+	}
+
 	if err := e.Shutdown(ctx); err != nil {
 		log.Fatalf("server shutdown error: %v", err)
 	}

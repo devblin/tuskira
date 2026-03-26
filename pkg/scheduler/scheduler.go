@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	inngestprovider "github.com/devblin/tuskira/pkg/scheduler/inngest"
-	"github.com/inngest/inngestgo"
+	riverprovider "github.com/devblin/tuskira/pkg/scheduler/river"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Job struct {
@@ -15,43 +15,51 @@ type Job struct {
 	RunAt   time.Time
 }
 
+type HandlerFunc func(ctx context.Context, externalID string, payload []byte) error
+
 type Scheduler interface {
 	Schedule(ctx context.Context, job Job) error
 	Cancel(ctx context.Context, jobID string) error
 	Reschedule(ctx context.Context, jobID string, newTime time.Time) error
+	SetHandler(handler HandlerFunc)
+	Start(ctx context.Context) error
+	Stop(ctx context.Context) error
 }
 
 type Config struct {
 	Provider string
-	EventKey string
-	AppID    string
+	Pool     *pgxpool.Pool
 }
 
 func New(cfg Config) (Scheduler, error) {
 	switch cfg.Provider {
-	case "inngest":
-		client, err := inngestgo.NewClient(inngestgo.ClientOpts{AppID: cfg.AppID, EventKey: &cfg.EventKey})
+	case "river":
+		rs, err := riverprovider.New(cfg.Pool)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create inngest client: %w", err)
+			return nil, fmt.Errorf("failed to create river scheduler: %w", err)
 		}
-		return &inngestAdapter{inner: inngestprovider.New(client)}, nil
+		return &riverAdapter{inner: rs}, nil
 	default:
 		return nil, fmt.Errorf("unsupported scheduler provider: %s", cfg.Provider)
 	}
 }
 
-type inngestAdapter struct {
-	inner *inngestprovider.Scheduler
+type riverAdapter struct {
+	inner *riverprovider.Scheduler
 }
 
-func (a *inngestAdapter) Schedule(ctx context.Context, job Job) error {
+func (a *riverAdapter) Schedule(ctx context.Context, job Job) error {
 	return a.inner.Schedule(ctx, job.ID, job.Payload, job.RunAt)
 }
 
-func (a *inngestAdapter) Cancel(ctx context.Context, jobID string) error {
+func (a *riverAdapter) Cancel(ctx context.Context, jobID string) error {
 	return a.inner.Cancel(ctx, jobID)
 }
 
-func (a *inngestAdapter) Reschedule(ctx context.Context, jobID string, newTime time.Time) error {
+func (a *riverAdapter) Reschedule(ctx context.Context, jobID string, newTime time.Time) error {
 	return a.inner.Reschedule(ctx, jobID, newTime)
 }
+
+func (a *riverAdapter) SetHandler(handler HandlerFunc) { a.inner.SetHandler(handler) }
+func (a *riverAdapter) Start(ctx context.Context) error { return a.inner.Start(ctx) }
+func (a *riverAdapter) Stop(ctx context.Context) error  { return a.inner.Stop(ctx) }

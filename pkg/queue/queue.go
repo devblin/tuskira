@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	inngestprovider "github.com/devblin/tuskira/pkg/queue/inngest"
-	"github.com/inngest/inngestgo"
+	riverprovider "github.com/devblin/tuskira/pkg/queue/river"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Task struct {
@@ -13,33 +13,41 @@ type Task struct {
 	Payload []byte
 }
 
+type HandlerFunc func(ctx context.Context, taskType string, payload []byte) error
+
 type Queue interface {
 	Enqueue(ctx context.Context, task Task) error
+	SetHandler(handler HandlerFunc)
+	Start(ctx context.Context) error
+	Stop(ctx context.Context) error
 }
 
 type Config struct {
 	Provider string
-	EventKey string
-	AppID    string
+	Pool     *pgxpool.Pool
 }
 
 func New(cfg Config) (Queue, error) {
 	switch cfg.Provider {
-	case "inngest":
-		client, err := inngestgo.NewClient(inngestgo.ClientOpts{AppID: cfg.AppID, EventKey: &cfg.EventKey})
+	case "river":
+		rq, err := riverprovider.New(cfg.Pool)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create inngest client: %w", err)
+			return nil, fmt.Errorf("failed to create river queue: %w", err)
 		}
-		return &inngestAdapter{inner: inngestprovider.New(client)}, nil
+		return &riverAdapter{inner: rq}, nil
 	default:
 		return nil, fmt.Errorf("unsupported queue provider: %s", cfg.Provider)
 	}
 }
 
-type inngestAdapter struct {
-	inner *inngestprovider.Queue
+type riverAdapter struct {
+	inner *riverprovider.Queue
 }
 
-func (a *inngestAdapter) Enqueue(ctx context.Context, task Task) error {
+func (a *riverAdapter) Enqueue(ctx context.Context, task Task) error {
 	return a.inner.Enqueue(ctx, task.Type, task.Payload)
 }
+
+func (a *riverAdapter) SetHandler(handler HandlerFunc) { a.inner.SetHandler(handler) }
+func (a *riverAdapter) Start(ctx context.Context) error { return a.inner.Start(ctx) }
+func (a *riverAdapter) Stop(ctx context.Context) error  { return a.inner.Stop(ctx) }
