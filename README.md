@@ -2,7 +2,19 @@
 
 Notification service supporting email, slack, and in-app channels with scheduling.
 
-Written in Go. Uses PostgreSQL for storage and [River](https://github.com/riverqueue/river) for job scheduling and queuing.
+Written in Go. Uses PostgreSQL for storage.
+
+## Features
+
+- **Multi-channel delivery** — email, Slack, and in-app (SSE) notifications
+- **Pluggable email providers** — ships with SMTP and SendGrid; add new providers by implementing a single `Sender` interface
+- **Runtime provider selection** — configure multiple email providers and choose per-request
+- **Scheduling** — schedule notifications for future delivery, reschedule, or cancel
+- **Notification templates** — reusable templates with Go template variable substitution
+- **Real-time streaming** — SSE-based in-app notifications with missed-message replay on reconnect
+- **JWT authentication** — token-based auth with configurable expiry
+- **Web UI** — built-in dashboard for sending, managing, and configuring notifications
+- **Per-user channel config** — each user configures their own providers and channels
 
 ## Dev Setup
 
