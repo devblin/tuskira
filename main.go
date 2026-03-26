@@ -27,7 +27,14 @@ import (
 
 func main() {
 	cfg := config.Load()
-	db := database.Init(cfg)
+	db, err := database.Init(cfg)
+	if err != nil {
+		log.Fatalf("failed to init database: %v", err)
+	}
+
+	if err := migrations.RunGormMigrations(db); err != nil {
+		log.Fatalf("failed to run gorm migrations: %v", err)
+	}
 
 	// Set up pgx pool and run River migrations
 	pgxPool, err := database.NewPgxPool(context.Background(), cfg)

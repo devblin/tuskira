@@ -16,6 +16,7 @@ import (
 	"github.com/devblin/tuskira/pkg/scheduler"
 )
 
+// NotificationService handles creating, sending, scheduling, and cancelling notifications.
 type NotificationService struct {
 	repo       *repository.NotificationRepository
 	configRepo *repository.ChannelConfigRepository
@@ -34,7 +35,10 @@ func NewNotificationService(
 	return &NotificationService{repo: repo, configRepo: configRepo, registry: registry, queue: q, scheduler: s}
 }
 
+// Send renders the template (if set), schedules the notification (if future time),
+// or sends it immediately via the appropriate channel provider.
 func (s *NotificationService) Send(n *model.Notification) error {
+	// Render subject/body from template if a template ID is provided
 	if n.TemplateID != nil {
 		tmpl, err := s.repo.FindTemplateByID(*n.TemplateID)
 		if err != nil {
@@ -57,6 +61,7 @@ func (s *NotificationService) Send(n *model.Notification) error {
 		}
 	}
 
+	// If a future schedule time is set, save and queue for later delivery
 	if n.ScheduleAt != nil && n.ScheduleAt.After(time.Now()) {
 		n.Status = model.StatusScheduled
 		if err := s.repo.Create(n); err != nil {
@@ -73,16 +78,12 @@ func (s *NotificationService) Send(n *model.Notification) error {
 		})
 	}
 
-	rawCfg, err := s.getChannelConfig(n.Channel)
+	p, rawCfg, err := s.getProviderAndConfig(n.Channel)
 	if err != nil {
 		return err
 	}
 
-	p, ok := s.registry.Get(n.Channel)
-	if !ok {
-		return fmt.Errorf("no provider registered for channel: %s", n.Channel)
-	}
-
+	// Send immediately; if inapp client isn't connected, save as pending for later replay
 	if err := p.Send(n, rawCfg); err != nil {
 		if errors.Is(err, provider.ErrClientNotConnected) {
 			n.Status = model.StatusPending
@@ -115,24 +116,16 @@ func (s *NotificationService) GetPendingScheduled() ([]model.Notification, error
 	return s.repo.FindPendingScheduled()
 }
 
+// SendByID sends a previously scheduled notification immediately.
 func (s *NotificationService) SendByID(id uint) (*model.Notification, error) {
-	n, err := s.repo.FindByID(id)
-	if err != nil {
-		return nil, fmt.Errorf("notification not found: %w", err)
-	}
-
-	if n.Status != model.StatusScheduled {
-		return nil, fmt.Errorf("notification %d is not in scheduled status (current: %s)", n.ID, n.Status)
-	}
-
-	rawCfg, err := s.getChannelConfig(n.Channel)
+	n, err := s.findScheduled(id)
 	if err != nil {
 		return nil, err
 	}
 
-	p, ok := s.registry.Get(n.Channel)
-	if !ok {
-		return nil, fmt.Errorf("no provider registered for channel: %s", n.Channel)
+	p, rawCfg, err := s.getProviderAndConfig(n.Channel)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := p.Send(n, rawCfg); err != nil {
@@ -150,14 +143,11 @@ func (s *NotificationService) SendByID(id uint) (*model.Notification, error) {
 	return n, nil
 }
 
+// UpdateSchedule reschedules a scheduled notification to a new time.
 func (s *NotificationService) UpdateSchedule(id uint, newTime time.Time) (*model.Notification, error) {
-	n, err := s.repo.FindByID(id)
+	n, err := s.findScheduled(id)
 	if err != nil {
-		return nil, fmt.Errorf("notification not found: %w", err)
-	}
-
-	if n.Status != model.StatusScheduled {
-		return nil, fmt.Errorf("notification %d is not in scheduled status (current: %s)", n.ID, n.Status)
+		return nil, err
 	}
 
 	jobID := fmt.Sprintf("notification:%d", n.ID)
@@ -172,14 +162,11 @@ func (s *NotificationService) UpdateSchedule(id uint, newTime time.Time) (*model
 	return n, nil
 }
 
+// CancelScheduled cancels a scheduled notification and its background job.
 func (s *NotificationService) CancelScheduled(id uint) (*model.Notification, error) {
-	n, err := s.repo.FindByID(id)
+	n, err := s.findScheduled(id)
 	if err != nil {
-		return nil, fmt.Errorf("notification not found: %w", err)
-	}
-
-	if n.Status != model.StatusScheduled {
-		return nil, fmt.Errorf("notification %d is not in scheduled status (current: %s)", n.ID, n.Status)
+		return nil, err
 	}
 
 	jobID := fmt.Sprintf("notification:%d", n.ID)
@@ -194,15 +181,32 @@ func (s *NotificationService) CancelScheduled(id uint) (*model.Notification, err
 	return n, nil
 }
 
-func (s *NotificationService) getChannelConfig(channel model.Channel) (json.RawMessage, error) {
+// findScheduled fetches a notification and verifies it's in scheduled status.
+func (s *NotificationService) findScheduled(id uint) (*model.Notification, error) {
+	n, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("notification not found: %w", err)
+	}
+	if n.Status != model.StatusScheduled {
+		return nil, fmt.Errorf("notification %d is not in scheduled status (current: %s)", n.ID, n.Status)
+	}
+	return n, nil
+}
+
+// getProviderAndConfig looks up the channel's config and provider in one step.
+func (s *NotificationService) getProviderAndConfig(channel model.Channel) (provider.Provider, json.RawMessage, error) {
 	cfg, err := s.configRepo.FindByChannel(channel)
 	if err != nil {
-		return nil, fmt.Errorf("channel %s is not configured: %w", channel, err)
+		return nil, nil, fmt.Errorf("channel %s is not configured: %w", channel, err)
 	}
 	if !cfg.Enabled {
-		return nil, fmt.Errorf("channel %s is disabled", channel)
+		return nil, nil, fmt.Errorf("channel %s is disabled", channel)
 	}
-	return json.RawMessage(cfg.Config), nil
+	p, ok := s.registry.Get(channel)
+	if !ok {
+		return nil, nil, fmt.Errorf("no provider registered for channel: %s", channel)
+	}
+	return p, json.RawMessage(cfg.Config), nil
 }
 
 func renderTemplate(tmplStr string, data map[string]string) (string, error) {

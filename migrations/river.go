@@ -4,10 +4,24 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/devblin/tuskira/internal/model"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivermigrate"
+	"gorm.io/gorm"
 )
+
+func RunGormMigrations(db *gorm.DB) error {
+	if err := db.AutoMigrate(
+		&model.User{},
+		&model.Notification{},
+		&model.Template{},
+		&model.ChannelConfig{},
+	); err != nil {
+		return fmt.Errorf("failed to run gorm migrations: %w", err)
+	}
+	return nil
+}
 
 func RunRiverMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	migrator, err := rivermigrate.New(riverpgxv5.New(pool), nil)

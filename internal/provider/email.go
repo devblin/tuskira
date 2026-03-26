@@ -1,14 +1,13 @@
 package provider
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
-	"net"
-	"net/smtp"
+	"strconv"
 
 	"github.com/devblin/tuskira/internal/model"
+	"github.com/wneessen/go-mail"
 )
 
 type EmailProvider struct{}
@@ -31,66 +30,46 @@ func (p *EmailProvider) Send(n *model.Notification, rawCfg json.RawMessage) erro
 		return fmt.Errorf("SMTP host not configured")
 	}
 
-	addr := net.JoinHostPort(cfg.Host, cfg.Port)
-	if cfg.Port == "" {
-		addr = net.JoinHostPort(cfg.Host, "587")
+	port := 587
+	if cfg.Port != "" {
+		var err error
+		port, err = strconv.Atoi(cfg.Port)
+		if err != nil {
+			return fmt.Errorf("invalid SMTP port: %w", err)
+		}
 	}
 
-	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"utf-8\"\r\n\r\n%s",
-		cfg.From, n.Recipient, n.Subject, n.Body)
+	msg := mail.NewMsg()
+	if err := msg.From(cfg.From); err != nil {
+		return fmt.Errorf("invalid from address: %w", err)
+	}
+	if err := msg.To(n.Recipient); err != nil {
+		return fmt.Errorf("invalid recipient address: %w", err)
+	}
+	msg.Subject(n.Subject)
+	msg.SetBodyString(mail.TypeTextPlain, n.Body)
 
-	auth := smtp.PlainAuth("", cfg.Username, cfg.Password, cfg.Host)
-
-	var err error
+	opts := []mail.Option{
+		mail.WithPort(port),
+		mail.WithUsername(cfg.Username),
+		mail.WithPassword(cfg.Password),
+		mail.WithSMTPAuth(mail.SMTPAuthPlain),
+	}
 	if cfg.TLS {
-		err = sendWithTLS(addr, cfg.Host, auth, cfg.From, n.Recipient, []byte(msg))
+		opts = append(opts, mail.WithSSLPort(false))
 	} else {
-		err = smtp.SendMail(addr, auth, cfg.From, []string{n.Recipient}, []byte(msg))
+		opts = append(opts, mail.WithTLSPortPolicy(mail.TLSOpportunistic))
 	}
 
+	client, err := mail.NewClient(cfg.Host, opts...)
 	if err != nil {
+		return fmt.Errorf("failed to create mail client: %w", err)
+	}
+
+	if err := client.DialAndSend(msg); err != nil {
 		return fmt.Errorf("failed to send email to %s: %w", n.Recipient, err)
 	}
 
 	log.Printf("[EMAIL] sent to %s | Subject: %s", n.Recipient, n.Subject)
 	return nil
-}
-
-func sendWithTLS(addr, host string, auth smtp.Auth, from, to string, msg []byte) error {
-	tlsConfig := &tls.Config{ServerName: host}
-
-	conn, err := tls.Dial("tcp", addr, tlsConfig)
-	if err != nil {
-		return fmt.Errorf("TLS dial failed: %w", err)
-	}
-	defer conn.Close()
-
-	client, err := smtp.NewClient(conn, host)
-	if err != nil {
-		return fmt.Errorf("SMTP client creation failed: %w", err)
-	}
-	defer client.Close()
-
-	if err := client.Auth(auth); err != nil {
-		return fmt.Errorf("SMTP auth failed: %w", err)
-	}
-	if err := client.Mail(from); err != nil {
-		return fmt.Errorf("SMTP MAIL FROM failed: %w", err)
-	}
-	if err := client.Rcpt(to); err != nil {
-		return fmt.Errorf("SMTP RCPT TO failed: %w", err)
-	}
-
-	w, err := client.Data()
-	if err != nil {
-		return fmt.Errorf("SMTP DATA failed: %w", err)
-	}
-	if _, err := w.Write(msg); err != nil {
-		return fmt.Errorf("SMTP write failed: %w", err)
-	}
-	if err := w.Close(); err != nil {
-		return fmt.Errorf("SMTP data close failed: %w", err)
-	}
-
-	return client.Quit()
 }

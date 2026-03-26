@@ -103,7 +103,9 @@ func (s *Scheduler) Cancel(ctx context.Context, jobID string) error {
 		return fmt.Errorf("failed to cancel river job %d: %w", riverJobID, err)
 	}
 
-	_, _ = s.pool.Exec(ctx, `DELETE FROM river_job_id_map WHERE external_id = $1`, jobID)
+	if _, err := s.pool.Exec(ctx, `DELETE FROM river_job_id_map WHERE external_id = $1`, jobID); err != nil {
+		log.Printf("[RIVER SCHEDULER] failed to delete job mapping for %s: %v", jobID, err)
+	}
 
 	log.Printf("[RIVER SCHEDULER] cancelled job %s (river_id=%d)", jobID, riverJobID)
 	return nil

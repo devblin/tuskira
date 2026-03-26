@@ -59,7 +59,9 @@ func (h *SSEHandler) Stream(c echo.Context) error {
 
 	// Replay pending/failed in-app notifications
 	pending, err := h.notifRepo.FindPendingByRecipientAndChannel(connectionID, model.ChannelInApp)
-	if err == nil {
+	if err != nil {
+		log.Printf("[SSE] failed to load pending notifications for %s: %v", connectionID, err)
+	} else {
 		for i := range pending {
 			msg := &sse.Message{
 				NotificationID: pending[i].ID,
@@ -68,14 +70,20 @@ func (h *SSEHandler) Stream(c echo.Context) error {
 				Recipient:      pending[i].Recipient,
 				Timestamp:      time.Now().UTC().Format(time.RFC3339),
 			}
-			data, _ := json.Marshal(msg)
+			data, err := json.Marshal(msg)
+			if err != nil {
+				log.Printf("[SSE] failed to marshal notification %d: %v", pending[i].ID, err)
+				continue
+			}
 			fmt.Fprintf(w, "data: %s\n\n", data)
 			w.Flush()
 
 			now := time.Now()
 			pending[i].Status = model.StatusSent
 			pending[i].SentAt = &now
-			h.notifRepo.Save(&pending[i])
+			if err := h.notifRepo.Save(&pending[i]); err != nil {
+				log.Printf("[SSE] failed to update notification %d status: %v", pending[i].ID, err)
+			}
 		}
 	}
 

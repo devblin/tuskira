@@ -65,32 +65,25 @@ func walkNodes(node parse.Node, seen map[string]struct{}) {
 			}
 		}
 	case *parse.ActionNode:
-		if n.Pipe != nil {
-			for _, cmd := range n.Pipe.Cmds {
-				for _, arg := range cmd.Args {
-					walkNodes(arg, seen)
-				}
-			}
-		}
+		walkPipe(n.Pipe, seen)
 	case *parse.IfNode:
 		walkNodes(n.List, seen)
 		walkNodes(n.ElseList, seen)
-		if n.Pipe != nil {
-			for _, cmd := range n.Pipe.Cmds {
-				for _, arg := range cmd.Args {
-					walkNodes(arg, seen)
-				}
-			}
-		}
+		walkPipe(n.Pipe, seen)
 	case *parse.RangeNode:
 		walkNodes(n.List, seen)
 		walkNodes(n.ElseList, seen)
-		if n.Pipe != nil {
-			for _, cmd := range n.Pipe.Cmds {
-				for _, arg := range cmd.Args {
-					walkNodes(arg, seen)
-				}
-			}
+		walkPipe(n.Pipe, seen)
+	}
+}
+
+func walkPipe(pipe *parse.PipeNode, seen map[string]struct{}) {
+	if pipe == nil {
+		return
+	}
+	for _, cmd := range pipe.Cmds {
+		for _, arg := range cmd.Args {
+			walkNodes(arg, seen)
 		}
 	}
 }

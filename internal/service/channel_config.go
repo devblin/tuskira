@@ -38,6 +38,18 @@ func (s *ChannelConfigService) Delete(channel model.Channel) error {
 	return s.repo.Delete(channel)
 }
 
+func (s *ChannelConfigService) getExistingConnectionID(channel model.Channel) string {
+	existing, err := s.repo.FindByChannel(channel)
+	if err != nil || existing == nil {
+		return ""
+	}
+	var cfg model.InAppChannelConfig
+	if err := json.Unmarshal(existing.Config, &cfg); err != nil {
+		return ""
+	}
+	return cfg.ConnectionID
+}
+
 func (s *ChannelConfigService) processConfig(channel model.Channel, data model.ChannelConfigData) (model.ChannelConfigData, error) {
 	switch channel {
 	case model.ChannelEmail:
@@ -64,19 +76,15 @@ func (s *ChannelConfigService) processConfig(channel model.Channel, data model.C
 	case model.ChannelInApp:
 		var cfg model.InAppChannelConfig
 		if data != nil {
-			_ = json.Unmarshal(data, &cfg)
+			if err := json.Unmarshal(data, &cfg); err != nil {
+				return nil, fmt.Errorf("invalid inapp config: %w", err)
+			}
 		}
 		if cfg.ConnectionID == "" {
-			existing, err := s.repo.FindByChannel(channel)
-			if err == nil && existing != nil {
-				var existingCfg model.InAppChannelConfig
-				if err := json.Unmarshal(existing.Config, &existingCfg); err == nil && existingCfg.ConnectionID != "" {
-					cfg.ConnectionID = existingCfg.ConnectionID
-				}
-			}
-			if cfg.ConnectionID == "" {
-				cfg.ConnectionID = uuid.New().String()
-			}
+			cfg.ConnectionID = s.getExistingConnectionID(channel)
+		}
+		if cfg.ConnectionID == "" {
+			cfg.ConnectionID = uuid.New().String()
 		}
 		processed, err := json.Marshal(cfg)
 		if err != nil {

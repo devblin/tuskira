@@ -2,15 +2,13 @@ package database
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/devblin/tuskira/internal/config"
-	"github.com/devblin/tuskira/internal/model"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-func Init(cfg *config.Config) *gorm.DB {
+func Init(cfg *config.Config) (*gorm.DB, error) {
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName,
@@ -18,17 +16,8 @@ func Init(cfg *config.Config) *gorm.DB {
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	if err := db.AutoMigrate(
-		&model.User{},
-		&model.Notification{},
-		&model.Template{},
-		&model.ChannelConfig{},
-	); err != nil {
-		log.Fatalf("failed to migrate database: %v", err)
-	}
-
-	return db
+	return db, nil
 }
