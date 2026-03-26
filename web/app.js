@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
     panels.forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
 
     if (tab === 'sent') Notifications.loadSent();
+    if (tab === 'pending') Notifications.loadPending();
     if (tab === 'scheduled') Notifications.loadScheduled();
     if (tab === 'templates') Templates.loadList();
     if (tab === 'channels') Channels.load();

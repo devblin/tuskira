@@ -20,6 +20,7 @@ func RegisterRoutes(e *echo.Echo, ah *AuthHandler, nh *NotificationHandler, th *
 
 	api.POST("/notifications", nh.Send)
 	api.GET("/notifications/sent", nh.ListSent)
+	api.GET("/notifications/pending", nh.ListPending)
 	api.GET("/notifications/scheduled", nh.GetPendingScheduled)
 	api.GET("/notifications/stream", sh.Stream)
 	api.GET("/notifications/:id", nh.GetByID)

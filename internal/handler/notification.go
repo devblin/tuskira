@@ -94,6 +94,14 @@ func (h *NotificationHandler) ListSent(c echo.Context) error {
 	return c.JSON(http.StatusOK, notifications)
 }
 
+func (h *NotificationHandler) ListPending(c echo.Context) error {
+	notifications, err := h.svc.ListPending()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, notifications)
+}
+
 func (h *NotificationHandler) GetPendingScheduled(c echo.Context) error {
 	notifications, err := h.svc.GetPendingScheduled()
 	if err != nil {

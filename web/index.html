@@ -57,6 +57,7 @@
     <nav class="sidebar">
       <button class="active" data-tab="send">Send Notification</button>
       <button data-tab="sent">View Sent</button>
+      <button data-tab="pending">View Pending</button>
       <button data-tab="scheduled">View Scheduled</button>
       <button data-tab="templates">Templates</button>
       <button data-tab="channels">Config Channels</button>
@@ -145,6 +146,32 @@
               </tr>
             </thead>
             <tbody id="sent-tbody">
+              <tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Select this tab to load data</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab: Pending Notifications -->
+      <div id="tab-pending" class="panel">
+        <div class="toolbar">
+          <h3>Pending Notifications</h3>
+          <button class="btn btn-outline btn-sm" onclick="Notifications.loadPending()">Refresh</button>
+        </div>
+        <div id="pending-msg" class="msg"></div>
+        <div class="table-wrap">
+          <table id="pending-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Recipient</th>
+                <th>Channel</th>
+                <th>Subject</th>
+                <th>Status</th>
+                <th>Created At</th>
+              </tr>
+            </thead>
+            <tbody id="pending-tbody">
               <tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Select this tab to load data</td></tr>
             </tbody>
           </table>

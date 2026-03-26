@@ -128,6 +128,10 @@ func (s *NotificationService) ListSent() ([]model.Notification, error) {
 	return s.repo.FindSent()
 }
 
+func (s *NotificationService) ListPending() ([]model.Notification, error) {
+	return s.repo.FindPending()
+}
+
 func (s *NotificationService) GetPendingScheduled() ([]model.Notification, error) {
 	return s.repo.FindPendingScheduled()
 }

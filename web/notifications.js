@@ -261,6 +261,35 @@ const Notifications = (() => {
     el._t = setTimeout(() => { el.style.display = 'none'; }, 5000);
   }
 
+  async function loadPending() {
+    const tbody = document.getElementById('pending-tbody');
+    const msg = document.getElementById('pending-msg');
+    msg.className = 'msg';
+    msg.style.display = 'none';
+    tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+
+    try {
+      const list = await API.listPending();
+      if (!list || list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No pending notifications</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(n => `
+        <tr>
+          <td>${n.ID}</td>
+          <td>${esc(n.recipient)}</td>
+          <td>${esc(n.channel)}</td>
+          <td>${esc(n.subject || '-')}</td>
+          <td><span class="badge badge-${n.status}">${n.status}</span></td>
+          <td>${formatDate(n.CreatedAt)}</td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      tbody.innerHTML = '';
+      showMsg(msg, 'error', err.message);
+    }
+  }
+
   async function loadSent() {
     const tbody = document.getElementById('sent-tbody');
     const msg = document.getElementById('sent-msg');
@@ -290,5 +319,5 @@ const Notifications = (() => {
     }
   }
 
-  return { initSendForm, loadScheduled, initScheduledTable, loadSent };
+  return { initSendForm, loadScheduled, initScheduledTable, loadSent, loadPending };
 })();

@@ -88,6 +88,10 @@ const API = (() => {
       return apiFetch('/api/v1/notifications/sent');
     },
 
+    listPending() {
+      return apiFetch('/api/v1/notifications/pending');
+    },
+
     listByRecipient(recipient) {
       return apiFetch('/api/v1/notifications?recipient=' + encodeURIComponent(recipient));
     },
