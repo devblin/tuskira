@@ -43,7 +43,7 @@ func New(pool *pgxpool.Pool) (*Queue, error) {
 	client, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Workers: workers,
 		Queues: map[string]river.QueueConfig{
-			river.QueueDefault: {MaxWorkers: 100},
+			"tasks": {MaxWorkers: 100},
 		},
 	})
 	if err != nil {
@@ -68,7 +68,7 @@ func (q *Queue) Enqueue(ctx context.Context, taskType string, payload []byte) er
 	_, err := q.client.Insert(ctx, GenericJobArgs{
 		TaskType: taskType,
 		Payload:  payload,
-	}, nil)
+	}, &river.InsertOpts{Queue: "tasks"})
 	if err != nil {
 		return err
 	}

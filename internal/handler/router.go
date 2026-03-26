@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func RegisterRoutes(e *echo.Echo, ah *AuthHandler, nh *NotificationHandler, th *TemplateHandler, ch *ChannelConfigHandler, jwtSecret string) {
+func RegisterRoutes(e *echo.Echo, ah *AuthHandler, nh *NotificationHandler, th *TemplateHandler, ch *ChannelConfigHandler, sh *SSEHandler, jwtSecret string) {
 	e.GET("/health", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 	})
@@ -21,6 +21,7 @@ func RegisterRoutes(e *echo.Echo, ah *AuthHandler, nh *NotificationHandler, th *
 	api.POST("/notifications", nh.Send)
 	api.GET("/notifications/sent", nh.ListSent)
 	api.GET("/notifications/scheduled", nh.GetPendingScheduled)
+	api.GET("/notifications/stream", sh.Stream)
 	api.GET("/notifications/:id", nh.GetByID)
 	api.GET("/notifications", nh.ListByRecipient)
 	api.POST("/notifications/:id/send", nh.TriggerSend)

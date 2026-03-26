@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"text/template"
 	"time"
@@ -83,6 +84,10 @@ func (s *NotificationService) Send(n *model.Notification) error {
 	}
 
 	if err := p.Send(n, rawCfg); err != nil {
+		if errors.Is(err, provider.ErrClientNotConnected) {
+			n.Status = model.StatusPending
+			return s.repo.Create(n)
+		}
 		n.Status = model.StatusFailed
 		s.repo.Create(n)
 		return fmt.Errorf("failed to send notification: %w", err)
@@ -190,11 +195,6 @@ func (s *NotificationService) CancelScheduled(id uint) (*model.Notification, err
 }
 
 func (s *NotificationService) getChannelConfig(channel model.Channel) (json.RawMessage, error) {
-	// In-app doesn't require config
-	if channel == model.ChannelInApp {
-		return json.RawMessage("{}"), nil
-	}
-
 	cfg, err := s.configRepo.FindByChannel(channel)
 	if err != nil {
 		return nil, fmt.Errorf("channel %s is not configured: %w", channel, err)

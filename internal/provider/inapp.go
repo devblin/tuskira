@@ -2,22 +2,46 @@ package provider
 
 import (
 	"encoding/json"
-	"log"
+	"errors"
+	"fmt"
 
 	"github.com/devblin/tuskira/internal/model"
+	"github.com/devblin/tuskira/internal/sse"
 )
 
-type InAppProvider struct{}
+var ErrClientNotConnected = errors.New("inapp client is not connected")
 
-func NewInAppProvider() *InAppProvider {
-	return &InAppProvider{}
+type InAppProvider struct {
+	hub *sse.Hub
+}
+
+func NewInAppProvider(hub *sse.Hub) *InAppProvider {
+	return &InAppProvider{hub: hub}
 }
 
 func (p *InAppProvider) Channel() model.Channel {
 	return model.ChannelInApp
 }
 
-func (p *InAppProvider) Send(n *model.Notification, _ json.RawMessage) error {
-	log.Printf("[INAPP] To: %s | Body: %s", n.Recipient, n.Body)
+func (p *InAppProvider) Send(n *model.Notification, rawCfg json.RawMessage) error {
+	var cfg model.InAppChannelConfig
+	if err := json.Unmarshal(rawCfg, &cfg); err != nil {
+		return fmt.Errorf("failed to parse inapp config: %w", err)
+	}
+
+	if cfg.ConnectionID == "" {
+		return fmt.Errorf("inapp channel has no connection_id configured")
+	}
+
+	msg := &sse.Message{
+		NotificationID: n.ID,
+		Subject:        n.Subject,
+		Body:           n.Body,
+		Recipient:      n.Recipient,
+	}
+
+	if err := p.hub.Send(cfg.ConnectionID, msg); err != nil {
+		return fmt.Errorf("%w: %s", ErrClientNotConnected, err.Error())
+	}
 	return nil
 }

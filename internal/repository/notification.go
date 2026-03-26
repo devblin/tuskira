@@ -47,6 +47,13 @@ func (r *NotificationRepository) FindSent() ([]model.Notification, error) {
 	return notifications, err
 }
 
+func (r *NotificationRepository) FindPendingByRecipientAndChannel(recipient string, channel model.Channel) ([]model.Notification, error) {
+	var notifications []model.Notification
+	err := r.db.Where("recipient = ? AND channel = ? AND status IN ?", recipient, channel, []model.Status{model.StatusPending, model.StatusFailed}).
+		Order("created_at asc").Find(&notifications).Error
+	return notifications, err
+}
+
 func (r *NotificationRepository) FindTemplateByID(id uint) (*model.Template, error) {
 	var t model.Template
 	if err := r.db.First(&t, id).Error; err != nil {

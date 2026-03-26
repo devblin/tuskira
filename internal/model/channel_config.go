@@ -70,4 +70,6 @@ type SlackChannel struct {
 	Name string `json:"name"`
 }
 
-type InAppChannelConfig struct{}
+type InAppChannelConfig struct {
+	ConnectionID string `json:"connection_id"`
+}

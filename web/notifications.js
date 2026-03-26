@@ -16,6 +16,34 @@ const Notifications = (() => {
       scheduleSection.classList.toggle('hidden', !scheduleToggle.checked);
     });
 
+    // Auto-fill recipient for in-app channel
+    const channelSelect = document.getElementById('channel');
+    const recipientInput = document.getElementById('recipient');
+
+    channelSelect.addEventListener('change', async () => {
+      if (channelSelect.value === 'inapp') {
+        // Try to get connection_id from already-loaded channels card first
+        let connId = Channels.getConnectionId();
+        if (!connId) {
+          try {
+            const cfg = await API.getChannelConfig('inapp');
+            if (cfg && cfg.config && cfg.config.connection_id) {
+              connId = cfg.config.connection_id;
+            }
+          } catch (_) {}
+        }
+        if (connId) {
+          recipientInput.value = connId;
+          recipientInput.readOnly = true;
+        }
+      } else {
+        if (recipientInput.readOnly) {
+          recipientInput.value = '';
+          recipientInput.readOnly = false;
+        }
+      }
+    });
+
     document.getElementById('template-select').addEventListener('change', (e) => {
       const container = document.getElementById('kv-container');
       container.innerHTML = '';

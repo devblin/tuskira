@@ -47,7 +47,7 @@ func New(pool *pgxpool.Pool) (*Scheduler, error) {
 	client, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Workers: workers,
 		Queues: map[string]river.QueueConfig{
-			river.QueueDefault: {MaxWorkers: 100},
+			"scheduler": {MaxWorkers: 100},
 		},
 	})
 	if err != nil {
@@ -74,6 +74,7 @@ func (s *Scheduler) Schedule(ctx context.Context, id string, payload []byte, run
 		Payload:    payload,
 	}, &river.InsertOpts{
 		ScheduledAt: runAt,
+		Queue:       "scheduler",
 	})
 	if err != nil {
 		return err
@@ -134,6 +135,7 @@ func (s *Scheduler) Reschedule(ctx context.Context, jobID string, newTime time.T
 		Payload:    args.Payload,
 	}, &river.InsertOpts{
 		ScheduledAt: newTime,
+		Queue:       "scheduler",
 	})
 	if err != nil {
 		return err

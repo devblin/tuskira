@@ -16,6 +16,7 @@ import (
 	"github.com/devblin/tuskira/internal/provider"
 	"github.com/devblin/tuskira/internal/repository"
 	"github.com/devblin/tuskira/internal/service"
+	"github.com/devblin/tuskira/internal/sse"
 	"github.com/devblin/tuskira/migrations"
 	"github.com/devblin/tuskira/pkg/database"
 	"github.com/devblin/tuskira/pkg/queue"
@@ -49,11 +50,14 @@ func main() {
 		log.Fatalf("failed to init scheduler: %v", err)
 	}
 
+	// SSE Hub for in-app notifications
+	hub := sse.NewHub()
+
 	// Notification channel providers (always registered, config checked at send time)
 	registry := provider.NewRegistry()
 	registry.Register(provider.NewEmailProvider())
 	registry.Register(provider.NewSlackProvider())
-	registry.Register(provider.NewInAppProvider())
+	registry.Register(provider.NewInAppProvider(hub))
 
 	// Repositories
 	notifRepo := repository.NewNotificationRepository(db)
@@ -104,7 +108,8 @@ func main() {
 	nh := handler.NewNotificationHandler(notifSvc)
 	th := handler.NewTemplateHandler(tmplSvc)
 	ch := handler.NewChannelConfigHandler(channelConfigSvc)
-	handler.RegisterRoutes(e, ah, nh, th, ch, cfg.JWTSecret)
+	sh := handler.NewSSEHandler(hub, channelConfigSvc, notifRepo)
+	handler.RegisterRoutes(e, ah, nh, th, ch, sh, cfg.JWTSecret)
 	e.File("/web", "web/index.html")
 	e.File("/web/", "web/index.html")
 	e.Static("/web", "web")

@@ -291,7 +291,28 @@
               </label>
             </div>
             <div class="channel-card-body">
-              <p style="color:var(--text-muted);font-size:13px">No configuration needed. In-app notifications are stored in the database.</p>
+              <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px">Enable and save to generate a connection ID for real-time notifications.</p>
+              <div id="inapp-connection" class="hidden">
+                <div class="form-group">
+                  <label>Connection ID</label>
+                  <div class="connection-id-row">
+                    <input type="text" id="inapp-connection-id" readonly>
+                    <button type="button" class="btn btn-outline btn-sm" id="inapp-copy-btn">Copy</button>
+                  </div>
+                </div>
+                <div class="sse-controls">
+                  <button type="button" class="btn btn-success btn-sm" id="inapp-connect-btn">Connect</button>
+                  <button type="button" class="btn btn-danger btn-sm hidden" id="inapp-disconnect-btn">Disconnect</button>
+                  <span class="sse-status" id="inapp-status"></span>
+                </div>
+                <div id="inapp-feed" class="sse-feed hidden">
+                  <div class="sse-feed-header">
+                    <label>Live Notifications</label>
+                    <button type="button" class="btn btn-outline btn-sm" id="inapp-clear-feed">Clear</button>
+                  </div>
+                  <div id="inapp-feed-items" class="sse-feed-items"></div>
+                </div>
+              </div>
             </div>
             <div class="channel-card-footer">
               <button class="btn btn-primary btn-sm ch-save">Save</button>
