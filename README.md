@@ -27,24 +27,69 @@ All channels are configured via `PUT /api/v1/channels` (requires JWT auth).
 
 ### Email
 
-Sends via SMTP.
+Supports multiple providers (SMTP and SendGrid). Configure one or more providers in the `providers` array.
+
+**SMTP provider:**
 
 ```json
 {
   "channel": "email",
   "enabled": true,
   "config": {
-    "host": "smtp.example.com",
-    "port": "587",
-    "username": "user@example.com",
-    "password": "password",
-    "from": "noreply@example.com",
-    "tls": true
+    "providers": [
+      {
+        "provider": "smtp",
+        "host": "smtp.example.com",
+        "port": "587",
+        "username": "user@example.com",
+        "password": "password",
+        "from": "noreply@example.com",
+        "tls": true
+      }
+    ]
   }
 }
 ```
 
 Required: `host`, `from`.
+
+**SendGrid provider:**
+
+```json
+{
+  "channel": "email",
+  "enabled": true,
+  "config": {
+    "providers": [
+      {
+        "provider": "sendgrid",
+        "api_key": "SG.your-api-key",
+        "from": "noreply@example.com"
+      }
+    ]
+  }
+}
+```
+
+Required: `api_key`, `from`.
+
+**Multiple providers:**
+
+You can configure multiple providers together. The first provider is used by default. To use a specific provider when sending, pass `provider_config` in the send request:
+
+```json
+{
+  "recipient": "user@example.com",
+  "channel": "email",
+  "subject": "Hello",
+  "body": "World",
+  "provider_config": {
+    "provider": "sendgrid",
+    "api_key": "SG.your-api-key",
+    "from": "noreply@example.com"
+  }
+}
+```
 
 ### Slack
 
