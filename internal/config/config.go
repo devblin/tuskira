@@ -13,6 +13,10 @@ type Config struct {
 	QueueProvider     string
 	SchedulerProvider string
 	EventKey          string
+	InngestAppID      string
+
+	JWTSecret string
+	JWTExpiry string
 }
 
 func Load() *Config {
@@ -27,6 +31,10 @@ func Load() *Config {
 		QueueProvider:     getEnv("QUEUE_PROVIDER", "inngest"),
 		SchedulerProvider: getEnv("SCHEDULER_PROVIDER", "inngest"),
 		EventKey:          getEnv("EVENT_KEY", ""),
+		InngestAppID:      getEnv("INNGEST_APP_ID", "tuskira"),
+
+		JWTSecret: getEnv("JWT_SECRET", "change-me-in-production"),
+		JWTExpiry: getEnv("JWT_EXPIRY", "24h"),
 	}
 }
 

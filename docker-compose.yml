@@ -12,11 +12,6 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
   inngest:
     container_name: inngest
@@ -24,12 +19,6 @@ services:
     ports:
       - "8288:8288"
     command: ["inngest", "dev", "-u", "http://app:8080/api/inngest"]
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8288/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
   app:
     container_name: app
     build: .
@@ -45,11 +34,14 @@ services:
       QUEUE_PROVIDER: inngest
       SCHEDULER_PROVIDER: inngest
       EVENT_KEY: ""
+      INNGEST_APP_ID: tuskira
+      JWT_SECRET: super-secret-change-me
+      JWT_EXPIRY: 24h
     depends_on:
       postgres:
-        condition: service_healthy
+        condition: service_started
       inngest:
-        condition: service_healthy
+        condition: service_started
 
 volumes:
   pgdata:

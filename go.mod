@@ -3,8 +3,10 @@ module github.com/devblin/tuskira
 go 1.24.0
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/inngest/inngestgo v0.15.1
 	github.com/labstack/echo/v4 v4.12.0
+	golang.org/x/crypto v0.39.0
 	gorm.io/driver/postgres v1.5.9
 	gorm.io/gorm v1.25.12
 )
@@ -34,7 +36,6 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
-	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/sync v0.15.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect

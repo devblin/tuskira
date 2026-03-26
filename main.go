@@ -27,11 +27,11 @@ func main() {
 	db := database.Init(cfg)
 
 	// Queue and scheduler (provider chosen via config)
-	q, err := queue.New(queue.Config{Provider: cfg.QueueProvider, EventKey: cfg.EventKey})
+	q, err := queue.New(queue.Config{Provider: cfg.QueueProvider, EventKey: cfg.EventKey, AppID: cfg.InngestAppID})
 	if err != nil {
 		log.Fatalf("failed to init queue: %v", err)
 	}
-	sched, err := scheduler.New(scheduler.Config{Provider: cfg.SchedulerProvider, EventKey: cfg.EventKey})
+	sched, err := scheduler.New(scheduler.Config{Provider: cfg.SchedulerProvider, EventKey: cfg.EventKey, AppID: cfg.InngestAppID})
 	if err != nil {
 		log.Fatalf("failed to init scheduler: %v", err)
 	}
@@ -45,19 +45,28 @@ func main() {
 	// Repositories
 	notifRepo := repository.NewNotificationRepository(db)
 	tmplRepo := repository.NewTemplateRepository(db)
+	userRepo := repository.NewUserRepository(db)
+
+	// JWT config
+	jwtExpiry, err := time.ParseDuration(cfg.JWTExpiry)
+	if err != nil {
+		log.Fatalf("invalid JWT_EXPIRY: %v", err)
+	}
 
 	// Services
 	notifSvc := service.NewNotificationService(notifRepo, registry, q, sched)
 	tmplSvc := service.NewTemplateService(tmplRepo)
+	authSvc := service.NewAuthService(userRepo, cfg.JWTSecret, jwtExpiry)
 
 	// HTTP server
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
+	ah := handler.NewAuthHandler(authSvc)
 	nh := handler.NewNotificationHandler(notifSvc)
 	th := handler.NewTemplateHandler(tmplSvc)
-	handler.RegisterRoutes(e, nh, th)
+	handler.RegisterRoutes(e, ah, nh, th, cfg.JWTSecret)
 
 	// Graceful shutdown
 	go func() {

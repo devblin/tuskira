@@ -22,6 +22,7 @@ func Init(cfg *config.Config) *gorm.DB {
 	}
 
 	if err := db.AutoMigrate(
+		&model.User{},
 		&model.Notification{},
 		&model.Template{},
 	); err != nil {

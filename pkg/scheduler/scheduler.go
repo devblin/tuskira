@@ -24,12 +24,13 @@ type Scheduler interface {
 type Config struct {
 	Provider string
 	EventKey string
+	AppID    string
 }
 
 func New(cfg Config) (Scheduler, error) {
 	switch cfg.Provider {
 	case "inngest":
-		client, err := inngestgo.NewClient(inngestgo.ClientOpts{EventKey: &cfg.EventKey})
+		client, err := inngestgo.NewClient(inngestgo.ClientOpts{AppID: cfg.AppID, EventKey: &cfg.EventKey})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create inngest client: %w", err)
 		}
