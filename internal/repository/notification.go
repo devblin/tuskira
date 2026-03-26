@@ -1,8 +1,6 @@
 package repository
 
 import (
-	"time"
-
 	"github.com/devblin/tuskira/internal/model"
 	"gorm.io/gorm"
 )
@@ -39,7 +37,7 @@ func (r *NotificationRepository) FindByRecipient(recipient string) ([]model.Noti
 
 func (r *NotificationRepository) FindPendingScheduled() ([]model.Notification, error) {
 	var notifications []model.Notification
-	err := r.db.Where("status = ? AND schedule_at <= ?", model.StatusScheduled, time.Now()).Find(&notifications).Error
+	err := r.db.Where("status = ?", model.StatusScheduled).Order("schedule_at asc").Find(&notifications).Error
 	return notifications, err
 }
 
