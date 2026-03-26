@@ -10,6 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// AuthService handles user registration, login, and JWT token generation.
 type AuthService struct {
 	repo      *repository.UserRepository
 	jwtSecret []byte

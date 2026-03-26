@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// NewPgxPool creates a pgx connection pool, used by River queue/scheduler.
 func NewPgxPool(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 	dsn := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=disable",

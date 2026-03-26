@@ -8,6 +8,7 @@ import (
 	"github.com/devblin/tuskira/internal/repository"
 )
 
+// TemplateService manages notification templates with Go template syntax.
 type TemplateService struct {
 	repo *repository.TemplateRepository
 }
@@ -29,6 +30,7 @@ func (s *TemplateService) List() ([]model.Template, error) {
 	return s.repo.FindAll()
 }
 
+// extractVariables parses Go template strings and returns sorted variable names (e.g. {{.Name}} -> "Name").
 func extractVariables(texts ...string) []string {
 	seen := make(map[string]struct{})
 	for _, text := range texts {
@@ -49,6 +51,7 @@ func extractVariables(texts ...string) []string {
 	return vars
 }
 
+// walkNodes recursively traverses a template AST to collect field references.
 func walkNodes(node parse.Node, seen map[string]struct{}) {
 	if node == nil {
 		return

@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// Message is the payload sent to SSE clients.
 type Message struct {
 	NotificationID uint   `json:"notification_id"`
 	Subject        string `json:"subject"`
@@ -20,6 +21,8 @@ type Client struct {
 	Done         chan struct{}
 }
 
+// Hub manages active SSE client connections. Clients register with a connection ID
+// and receive messages on a buffered channel. Only one connection per ID is allowed.
 type Hub struct {
 	mu      sync.RWMutex
 	clients map[string]*Client

@@ -11,6 +11,9 @@ import (
 
 var ErrClientNotConnected = errors.New("inapp client is not connected")
 
+// InAppProvider delivers notifications to connected SSE clients via the Hub.
+// If the client isn't connected, returns ErrClientNotConnected so the notification
+// can be saved as pending and replayed when the client reconnects.
 type InAppProvider struct {
 	hub *sse.Hub
 }

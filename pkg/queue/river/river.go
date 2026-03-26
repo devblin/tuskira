@@ -30,6 +30,8 @@ func (w *GenericJobWorker) Work(ctx context.Context, job *river.Job[GenericJobAr
 	return w.Handler(ctx, job.Args.TaskType, job.Args.Payload)
 }
 
+// Queue is the River-backed implementation of the queue interface.
+// It wraps a River client and routes all tasks through a single GenericJobWorker.
 type Queue struct {
 	client *river.Client[pgx.Tx]
 	worker *GenericJobWorker

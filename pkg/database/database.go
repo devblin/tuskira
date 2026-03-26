@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// Init opens a GORM database connection using config credentials.
 func Init(cfg *config.Config) (*gorm.DB, error) {
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",

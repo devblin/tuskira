@@ -9,6 +9,7 @@ import (
 	"github.com/slack-go/slack"
 )
 
+// SlackProvider sends notifications to Slack channels using the Slack API.
 type SlackProvider struct{}
 
 func NewSlackProvider() *SlackProvider {

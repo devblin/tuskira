@@ -10,6 +10,7 @@ import (
 	"github.com/wneessen/go-mail"
 )
 
+// EmailProvider sends notifications via SMTP using go-mail.
 type EmailProvider struct{}
 
 func NewEmailProvider() *EmailProvider {

@@ -2,6 +2,7 @@ package config
 
 import "os"
 
+// Config holds all application settings loaded from environment variables.
 type Config struct {
 	DBHost     string
 	DBPort     string

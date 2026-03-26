@@ -24,6 +24,8 @@ func NewSSEHandler(hub *sse.Hub, channelConfigSvc *service.ChannelConfigService,
 	return &SSEHandler{hub: hub, channelConfigSvc: channelConfigSvc, notifRepo: notifRepo}
 }
 
+// Stream opens an SSE connection. Validates the connection_id against the inapp channel config,
+// replays any pending notifications, then streams new messages in real time.
 func (h *SSEHandler) Stream(c echo.Context) error {
 	connectionID := c.QueryParam("connection_id")
 	if connectionID == "" {

@@ -33,6 +33,9 @@ func (w *ScheduledJobWorker) Work(ctx context.Context, job *river.Job[ScheduledJ
 	return w.Handler(ctx, job.Args.ExternalID, job.Args.Payload)
 }
 
+// Scheduler is the River-backed implementation of the scheduler interface.
+// It uses a mapping table (river_job_id_map) to translate external IDs to River job IDs
+// for cancel/reschedule operations.
 type Scheduler struct {
 	client *river.Client[pgx.Tx]
 	pool   *pgxpool.Pool

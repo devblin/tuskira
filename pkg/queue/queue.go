@@ -15,6 +15,8 @@ type Task struct {
 
 type HandlerFunc func(ctx context.Context, taskType string, payload []byte) error
 
+// Queue is the interface for async task processing. Implementations handle
+// enqueueing tasks, setting worker handlers, and lifecycle management.
 type Queue interface {
 	Enqueue(ctx context.Context, task Task) error
 	SetHandler(handler HandlerFunc)

@@ -17,6 +17,8 @@ type Job struct {
 
 type HandlerFunc func(ctx context.Context, externalID string, payload []byte) error
 
+// Scheduler is the interface for delayed job execution. Jobs are scheduled
+// at a specific time and can be cancelled or rescheduled.
 type Scheduler interface {
 	Schedule(ctx context.Context, job Job) error
 	Cancel(ctx context.Context, jobID string) error

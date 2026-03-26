@@ -9,6 +9,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// ChannelConfigService manages channel configurations (email, slack, inapp).
+// Each channel has its own config schema validated in processConfig.
 type ChannelConfigService struct {
 	repo *repository.ChannelConfigRepository
 }
@@ -38,6 +40,7 @@ func (s *ChannelConfigService) Delete(channel model.Channel) error {
 	return s.repo.Delete(channel)
 }
 
+// getExistingConnectionID loads the current inapp config from DB to preserve the connection ID across updates.
 func (s *ChannelConfigService) getExistingConnectionID(channel model.Channel) string {
 	existing, err := s.repo.FindByChannel(channel)
 	if err != nil || existing == nil {
@@ -50,6 +53,7 @@ func (s *ChannelConfigService) getExistingConnectionID(channel model.Channel) st
 	return cfg.ConnectionID
 }
 
+// processConfig validates and normalizes channel-specific configuration.
 func (s *ChannelConfigService) processConfig(channel model.Channel, data model.ChannelConfigData) (model.ChannelConfigData, error) {
 	switch channel {
 	case model.ChannelEmail:

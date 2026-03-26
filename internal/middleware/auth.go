@@ -8,6 +8,8 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// JWTMiddleware validates the Bearer token from the Authorization header
+// and sets user_id in the request context.
 func JWTMiddleware(secret string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
