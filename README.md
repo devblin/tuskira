@@ -10,7 +10,7 @@ Requires Docker.
 docker compose up
 ```
 
-App runs on `http://localhost:8080` with hot reload. Postgres starts automatically.
+App runs on `http://localhost:8080` with hot reload. Postgres starts automatically. UI is available at `http://localhost:8080/web`.
 
 ## Default User
 
