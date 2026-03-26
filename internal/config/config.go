@@ -11,7 +11,6 @@ type Config struct {
 	DBName     string
 	ServerPort string
 
-	QueueProvider     string
 	SchedulerProvider string
 
 	JWTSecret string
@@ -27,7 +26,6 @@ func Load() *Config {
 		DBName:     getEnv("DB_NAME", "tuskira"),
 		ServerPort: getEnv("SERVER_PORT", "8080"),
 
-		QueueProvider:     getEnv("QUEUE_PROVIDER", "river"),
 		SchedulerProvider: getEnv("SCHEDULER_PROVIDER", "river"),
 
 		JWTSecret: getEnv("JWT_SECRET", "change-me-in-production"),

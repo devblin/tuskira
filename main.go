@@ -19,7 +19,6 @@ import (
 	"github.com/devblin/tuskira/internal/sse"
 	"github.com/devblin/tuskira/migrations"
 	"github.com/devblin/tuskira/pkg/database"
-	"github.com/devblin/tuskira/pkg/queue"
 	"github.com/devblin/tuskira/pkg/scheduler"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -51,11 +50,7 @@ func main() {
 		log.Fatalf("failed to run river migrations: %v", err)
 	}
 
-	// Queue and scheduler
-	q, err := queue.New(queue.Config{Provider: cfg.QueueProvider, Pool: pgxPool})
-	if err != nil {
-		log.Fatalf("failed to init queue: %v", err)
-	}
+	// Scheduler
 	sched, err := scheduler.New(scheduler.Config{Provider: cfg.SchedulerProvider, Pool: pgxPool})
 	if err != nil {
 		log.Fatalf("failed to init scheduler: %v", err)
@@ -83,7 +78,7 @@ func main() {
 	}
 
 	// Services
-	notifSvc := service.NewNotificationService(notifRepo, channelConfigRepo, registry, q, sched)
+	notifSvc := service.NewNotificationService(notifRepo, channelConfigRepo, registry, sched)
 	tmplSvc := service.NewTemplateService(tmplRepo)
 	authSvc := service.NewAuthService(userRepo, cfg.JWTSecret, jwtExpiry)
 	channelConfigSvc := service.NewChannelConfigService(channelConfigRepo)
@@ -103,9 +98,6 @@ func main() {
 	workerCtx, workerCancel := context.WithCancel(context.Background())
 	defer workerCancel()
 
-	if err := q.Start(workerCtx); err != nil {
-		log.Fatalf("failed to start queue workers: %v", err)
-	}
 	if err := sched.Start(workerCtx); err != nil {
 		log.Fatalf("failed to start scheduler workers: %v", err)
 	}
@@ -141,9 +133,6 @@ func main() {
 
 	// Stop River workers gracefully
 	workerCancel()
-	if err := q.Stop(ctx); err != nil {
-		log.Printf("queue worker stop error: %v", err)
-	}
 	if err := sched.Stop(ctx); err != nil {
 		log.Printf("scheduler worker stop error: %v", err)
 	}

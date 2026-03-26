@@ -9,11 +9,16 @@ import (
 	"text/template"
 	"time"
 
+	"log"
 	"github.com/devblin/tuskira/internal/model"
 	"github.com/devblin/tuskira/internal/provider"
 	"github.com/devblin/tuskira/internal/repository"
-	"github.com/devblin/tuskira/pkg/queue"
 	"github.com/devblin/tuskira/pkg/scheduler"
+)
+
+const (
+	maxRetries     = 3
+	initialBackoff = 1 * time.Second
 )
 
 // NotificationService handles creating, sending, scheduling, and cancelling notifications.
@@ -21,7 +26,6 @@ type NotificationService struct {
 	repo       *repository.NotificationRepository
 	configRepo *repository.ChannelConfigRepository
 	registry   *provider.Registry
-	queue      queue.Queue
 	scheduler  scheduler.Scheduler
 }
 
@@ -29,10 +33,9 @@ func NewNotificationService(
 	repo *repository.NotificationRepository,
 	configRepo *repository.ChannelConfigRepository,
 	registry *provider.Registry,
-	q queue.Queue,
 	s scheduler.Scheduler,
 ) *NotificationService {
-	return &NotificationService{repo: repo, configRepo: configRepo, registry: registry, queue: q, scheduler: s}
+	return &NotificationService{repo: repo, configRepo: configRepo, registry: registry, scheduler: s}
 }
 
 // Send renders the template (if set), schedules the notification (if future time),
@@ -83,12 +86,25 @@ func (s *NotificationService) Send(n *model.Notification) error {
 		return err
 	}
 
-	// Send immediately; if inapp client isn't connected, save as pending for later replay
-	if err := p.Send(n, rawCfg); err != nil {
-		if errors.Is(err, provider.ErrClientNotConnected) {
-			n.Status = model.StatusPending
-			return s.repo.Create(n)
+	// In-app: send directly, save as pending if client not connected
+	if n.Channel == model.ChannelInApp {
+		if err := p.Send(n, rawCfg); err != nil {
+			if errors.Is(err, provider.ErrClientNotConnected) {
+				n.Status = model.StatusPending
+				return s.repo.Create(n)
+			}
+			n.Status = model.StatusFailed
+			s.repo.Create(n)
+			return fmt.Errorf("failed to send notification: %w", err)
 		}
+		now := time.Now()
+		n.Status = model.StatusSent
+		n.SentAt = &now
+		return s.repo.Create(n)
+	}
+
+	// Email/Slack: send with exponential backoff retry
+	if err := s.sendWithRetry(p, n, rawCfg); err != nil {
 		n.Status = model.StatusFailed
 		s.repo.Create(n)
 		return fmt.Errorf("failed to send notification: %w", err)
@@ -128,15 +144,25 @@ func (s *NotificationService) SendByID(id uint) (*model.Notification, error) {
 		return nil, err
 	}
 
-	if err := p.Send(n, rawCfg); err != nil {
-		if errors.Is(err, provider.ErrClientNotConnected) {
-			n.Status = model.StatusPending
+	// In-app: send directly, save as pending if client not connected
+	if n.Channel == model.ChannelInApp {
+		if err := p.Send(n, rawCfg); err != nil {
+			if errors.Is(err, provider.ErrClientNotConnected) {
+				n.Status = model.StatusPending
+				s.repo.Save(n)
+				return n, nil
+			}
+			n.Status = model.StatusFailed
 			s.repo.Save(n)
-			return n, nil
+			return nil, fmt.Errorf("failed to send notification: %w", err)
 		}
-		n.Status = model.StatusFailed
-		s.repo.Save(n)
-		return nil, fmt.Errorf("failed to send notification: %w", err)
+	} else {
+		// Email/Slack: send with exponential backoff retry
+		if err := s.sendWithRetry(p, n, rawCfg); err != nil {
+			n.Status = model.StatusFailed
+			s.repo.Save(n)
+			return nil, fmt.Errorf("failed to send notification: %w", err)
+		}
 	}
 
 	now := time.Now()
@@ -212,6 +238,20 @@ func (s *NotificationService) getProviderAndConfig(channel model.Channel) (provi
 		return nil, nil, fmt.Errorf("no provider registered for channel: %s", channel)
 	}
 	return p, json.RawMessage(cfg.Config), nil
+}
+
+func (s *NotificationService) sendWithRetry(p provider.Provider, n *model.Notification, rawCfg json.RawMessage) error {
+	var err error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if err = p.Send(n, rawCfg); err == nil {
+			return nil
+		}
+		log.Printf("[RETRY] attempt %d/%d failed for notification to %s via %s: %v", attempt+1, maxRetries+1, n.Recipient, n.Channel, err)
+		if attempt < maxRetries {
+			time.Sleep(initialBackoff * time.Duration(1<<uint(attempt)))
+		}
+	}
+	return err
 }
 
 func renderTemplate(tmplStr string, data map[string]string) (string, error) {

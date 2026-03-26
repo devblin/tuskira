@@ -2,6 +2,8 @@
 
 Notification service supporting email, slack, and in-app channels with scheduling.
 
+Written in Go. Uses PostgreSQL for storage and [River](https://github.com/riverqueue/river) for job scheduling and queuing.
+
 ## Dev Setup
 
 Requires Docker.
