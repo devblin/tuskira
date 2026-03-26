@@ -16,19 +16,21 @@ import (
 )
 
 type NotificationService struct {
-	repo      *repository.NotificationRepository
-	registry  *provider.Registry
-	queue     queue.Queue
-	scheduler scheduler.Scheduler
+	repo       *repository.NotificationRepository
+	configRepo *repository.ChannelConfigRepository
+	registry   *provider.Registry
+	queue      queue.Queue
+	scheduler  scheduler.Scheduler
 }
 
 func NewNotificationService(
 	repo *repository.NotificationRepository,
+	configRepo *repository.ChannelConfigRepository,
 	registry *provider.Registry,
 	q queue.Queue,
 	s scheduler.Scheduler,
 ) *NotificationService {
-	return &NotificationService{repo: repo, registry: registry, queue: q, scheduler: s}
+	return &NotificationService{repo: repo, configRepo: configRepo, registry: registry, queue: q, scheduler: s}
 }
 
 func (s *NotificationService) Send(n *model.Notification) error {
@@ -70,12 +72,17 @@ func (s *NotificationService) Send(n *model.Notification) error {
 		})
 	}
 
+	rawCfg, err := s.getChannelConfig(n.Channel)
+	if err != nil {
+		return err
+	}
+
 	p, ok := s.registry.Get(n.Channel)
 	if !ok {
 		return fmt.Errorf("no provider registered for channel: %s", n.Channel)
 	}
 
-	if err := p.Send(n); err != nil {
+	if err := p.Send(n, rawCfg); err != nil {
 		n.Status = model.StatusFailed
 		s.repo.Create(n)
 		return fmt.Errorf("failed to send notification: %w", err)
@@ -113,12 +120,17 @@ func (s *NotificationService) SendByID(id uint) (*model.Notification, error) {
 		return nil, fmt.Errorf("notification %d is not in scheduled status (current: %s)", n.ID, n.Status)
 	}
 
+	rawCfg, err := s.getChannelConfig(n.Channel)
+	if err != nil {
+		return nil, err
+	}
+
 	p, ok := s.registry.Get(n.Channel)
 	if !ok {
 		return nil, fmt.Errorf("no provider registered for channel: %s", n.Channel)
 	}
 
-	if err := p.Send(n); err != nil {
+	if err := p.Send(n, rawCfg); err != nil {
 		n.Status = model.StatusFailed
 		s.repo.Save(n)
 		return nil, fmt.Errorf("failed to send notification: %w", err)
@@ -175,6 +187,22 @@ func (s *NotificationService) CancelScheduled(id uint) (*model.Notification, err
 		return nil, fmt.Errorf("failed to cancel notification: %w", err)
 	}
 	return n, nil
+}
+
+func (s *NotificationService) getChannelConfig(channel model.Channel) (json.RawMessage, error) {
+	// In-app doesn't require config
+	if channel == model.ChannelInApp {
+		return json.RawMessage("{}"), nil
+	}
+
+	cfg, err := s.configRepo.FindByChannel(channel)
+	if err != nil {
+		return nil, fmt.Errorf("channel %s is not configured: %w", channel, err)
+	}
+	if !cfg.Enabled {
+		return nil, fmt.Errorf("channel %s is disabled", channel)
+	}
+	return json.RawMessage(cfg.Config), nil
 }
 
 func renderTemplate(tmplStr string, data map[string]string) (string, error) {

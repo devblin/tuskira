@@ -102,5 +102,26 @@ const API = (() => {
     listTemplates() {
       return apiFetch('/api/v1/templates');
     },
+
+    listChannelConfigs() {
+      return apiFetch('/api/v1/channels');
+    },
+
+    getChannelConfig(channel) {
+      return apiFetch('/api/v1/channels/' + encodeURIComponent(channel));
+    },
+
+    upsertChannelConfig(data) {
+      return apiFetch('/api/v1/channels', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+    },
+
+    deleteChannelConfig(channel) {
+      return apiFetch('/api/v1/channels/' + encodeURIComponent(channel), {
+        method: 'DELETE',
+      });
+    },
   };
 })();

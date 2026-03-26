@@ -49,7 +49,7 @@ func main() {
 		log.Fatalf("failed to init scheduler: %v", err)
 	}
 
-	// Notification channel providers
+	// Notification channel providers (always registered, config checked at send time)
 	registry := provider.NewRegistry()
 	registry.Register(provider.NewEmailProvider())
 	registry.Register(provider.NewSlackProvider())
@@ -59,6 +59,7 @@ func main() {
 	notifRepo := repository.NewNotificationRepository(db)
 	tmplRepo := repository.NewTemplateRepository(db)
 	userRepo := repository.NewUserRepository(db)
+	channelConfigRepo := repository.NewChannelConfigRepository(db)
 
 	// JWT config
 	jwtExpiry, err := time.ParseDuration(cfg.JWTExpiry)
@@ -67,9 +68,10 @@ func main() {
 	}
 
 	// Services
-	notifSvc := service.NewNotificationService(notifRepo, registry, q, sched)
+	notifSvc := service.NewNotificationService(notifRepo, channelConfigRepo, registry, q, sched)
 	tmplSvc := service.NewTemplateService(tmplRepo)
 	authSvc := service.NewAuthService(userRepo, cfg.JWTSecret, jwtExpiry)
+	channelConfigSvc := service.NewChannelConfigService(channelConfigRepo)
 
 	// Set up River worker handlers and start processing
 	sched.SetHandler(func(ctx context.Context, externalID string, payload []byte) error {
@@ -101,7 +103,8 @@ func main() {
 	ah := handler.NewAuthHandler(authSvc)
 	nh := handler.NewNotificationHandler(notifSvc)
 	th := handler.NewTemplateHandler(tmplSvc)
-	handler.RegisterRoutes(e, ah, nh, th, cfg.JWTSecret)
+	ch := handler.NewChannelConfigHandler(channelConfigSvc)
+	handler.RegisterRoutes(e, ah, nh, th, ch, cfg.JWTSecret)
 	e.File("/web", "web/index.html")
 	e.File("/web/", "web/index.html")
 	e.Static("/web", "web")

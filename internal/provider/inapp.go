@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"encoding/json"
 	"log"
 
 	"github.com/devblin/tuskira/internal/model"
@@ -16,8 +17,7 @@ func (p *InAppProvider) Channel() model.Channel {
 	return model.ChannelInApp
 }
 
-func (p *InAppProvider) Send(n *model.Notification) error {
-	// TODO: persist in-app notification and push via WebSocket/SSE
+func (p *InAppProvider) Send(n *model.Notification, _ json.RawMessage) error {
 	log.Printf("[INAPP] To: %s | Body: %s", n.Recipient, n.Body)
 	return nil
 }

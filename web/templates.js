@@ -1,4 +1,5 @@
 const Templates = (() => {
+  let _templates = [];
   function initForm() {
     const form = document.getElementById('template-form');
     const msg = document.getElementById('template-msg');
@@ -56,6 +57,7 @@ const Templates = (() => {
     try {
       const list = await API.listTemplates();
       if (!list) return;
+      _templates = list;
       list.forEach(t => {
         const opt = document.createElement('option');
         opt.value = t.ID;
@@ -65,6 +67,10 @@ const Templates = (() => {
     } catch (err) {
       // ignore
     }
+  }
+
+  function getTemplateById(id) {
+    return _templates.find(t => t.ID === id);
   }
 
   function esc(s) {
@@ -81,5 +87,5 @@ const Templates = (() => {
     el._t = setTimeout(() => { el.style.display = 'none'; }, 5000);
   }
 
-  return { initForm, loadList, populateDropdown };
+  return { initForm, loadList, populateDropdown, getTemplateById };
 })();

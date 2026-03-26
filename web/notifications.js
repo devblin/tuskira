@@ -16,6 +16,17 @@ const Notifications = (() => {
       scheduleSection.classList.toggle('hidden', !scheduleToggle.checked);
     });
 
+    document.getElementById('template-select').addEventListener('change', (e) => {
+      const container = document.getElementById('kv-container');
+      container.innerHTML = '';
+      const tmplId = parseInt(e.target.value);
+      if (!tmplId) return;
+      const tmpl = Templates.getTemplateById(tmplId);
+      if (tmpl && tmpl.variables && tmpl.variables.length) {
+        tmpl.variables.forEach(v => addKVRow(v));
+      }
+    });
+
     document.getElementById('add-kv').addEventListener('click', () => {
       addKVRow();
     });
@@ -62,12 +73,12 @@ const Notifications = (() => {
     });
   }
 
-  function addKVRow() {
+  function addKVRow(key) {
     const container = document.getElementById('kv-container');
     const row = document.createElement('div');
     row.className = 'kv-row';
     row.innerHTML = `
-      <input type="text" class="kv-key" placeholder="Key">
+      <input type="text" class="kv-key" placeholder="Key" value="${key || ''}">
       <input type="text" class="kv-val" placeholder="Value">
       <button type="button" class="btn-remove" onclick="this.parentElement.remove()">&times;</button>
     `;

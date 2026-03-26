@@ -80,6 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tab === 'sent') Notifications.loadSent();
     if (tab === 'scheduled') Notifications.loadScheduled();
     if (tab === 'templates') Templates.loadList();
+    if (tab === 'channels') Channels.load();
   }
 
   tabBtns.forEach(btn => {
@@ -90,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
   Notifications.initSendForm();
   Notifications.initScheduledTable();
   Templates.initForm();
+  Channels.init();
 
   // Check existing session
   if (API.getToken()) {

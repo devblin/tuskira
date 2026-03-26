@@ -25,6 +25,7 @@ func Init(cfg *config.Config) *gorm.DB {
 		&model.User{},
 		&model.Notification{},
 		&model.Template{},
+		&model.ChannelConfig{},
 	); err != nil {
 		log.Fatalf("failed to migrate database: %v", err)
 	}

@@ -1,9 +1,13 @@
 package provider
 
-import "github.com/devblin/tuskira/internal/model"
+import (
+	"encoding/json"
+
+	"github.com/devblin/tuskira/internal/model"
+)
 
 type Provider interface {
-	Send(notification *model.Notification) error
+	Send(notification *model.Notification, rawCfg json.RawMessage) error
 	Channel() model.Channel
 }
 
