@@ -36,6 +36,10 @@ func main() {
 		log.Fatalf("failed to run gorm migrations: %v", err)
 	}
 
+	if err := database.SeedDefaultUser(db); err != nil {
+		log.Fatalf("failed to seed default user: %v", err)
+	}
+
 	// Set up pgx pool and run River migrations
 	pgxPool, err := database.NewPgxPool(context.Background(), cfg)
 	if err != nil {

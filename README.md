@@ -12,6 +12,13 @@ docker compose up
 
 App runs on `http://localhost:8080` with hot reload. Postgres starts automatically.
 
+## Default User
+
+A default user is created on startup:
+
+- **Email:** `test@email.com`
+- **Password:** `12345678`
+
 ## Notification Channels
 
 All channels are configured via `PUT /api/v1/channels` (requires JWT auth).

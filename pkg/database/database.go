@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/devblin/tuskira/internal/config"
+	"github.com/devblin/tuskira/internal/model"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -21,4 +23,21 @@ func Init(cfg *config.Config) (*gorm.DB, error) {
 	}
 
 	return db, nil
+}
+
+// SeedDefaultUser creates a default test user if one doesn't already exist.
+func SeedDefaultUser(db *gorm.DB) error {
+	var count int64
+	db.Model(&model.User{}).Where("email = ?", "test@email.com").Count(&count)
+	if count > 0 {
+		return nil
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte("12345678"), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash default password: %w", err)
+	}
+	return db.Create(&model.User{
+		Email:    "test@email.com",
+		Password: string(hash),
+	}).Error
 }
