@@ -129,6 +129,11 @@ func (s *NotificationService) SendByID(id uint) (*model.Notification, error) {
 	}
 
 	if err := p.Send(n, rawCfg); err != nil {
+		if errors.Is(err, provider.ErrClientNotConnected) {
+			n.Status = model.StatusPending
+			s.repo.Save(n)
+			return n, nil
+		}
 		n.Status = model.StatusFailed
 		s.repo.Save(n)
 		return nil, fmt.Errorf("failed to send notification: %w", err)

@@ -16,13 +16,41 @@ const Notifications = (() => {
       scheduleSection.classList.toggle('hidden', !scheduleToggle.checked);
     });
 
-    // Auto-fill recipient for in-app channel
+    // Auto-fill recipient for in-app channel, show dropdown for slack
     const channelSelect = document.getElementById('channel');
     const recipientInput = document.getElementById('recipient');
+    const recipientSlack = document.getElementById('recipient-slack');
 
     channelSelect.addEventListener('change', async () => {
-      if (channelSelect.value === 'inapp') {
-        // Try to get connection_id from already-loaded channels card first
+      if (channelSelect.value === 'slack') {
+        // Populate slack channel dropdown
+        recipientSlack.innerHTML = '<option value="">-- Select Slack channel --</option>';
+        try {
+          const cfg = await API.getChannelConfig('slack');
+          if (cfg && cfg.config && cfg.config.channels) {
+            cfg.config.channels.forEach(ch => {
+              const opt = document.createElement('option');
+              opt.value = ch.id;
+              opt.textContent = ch.name ? `${ch.name} (${ch.id})` : ch.id;
+              recipientSlack.appendChild(opt);
+            });
+          }
+        } catch (_) {}
+        recipientInput.classList.add('hidden');
+        recipientInput.disabled = true;
+        recipientInput.required = false;
+        recipientSlack.classList.remove('hidden');
+        recipientSlack.disabled = false;
+        recipientSlack.required = true;
+      } else if (channelSelect.value === 'inapp') {
+        // Hide slack dropdown, show text input
+        recipientSlack.classList.add('hidden');
+        recipientSlack.disabled = true;
+        recipientSlack.required = false;
+        recipientInput.classList.remove('hidden');
+        recipientInput.disabled = false;
+        recipientInput.required = true;
+        // Auto-fill connection_id
         let connId = Channels.getConnectionId();
         if (!connId) {
           try {
@@ -37,6 +65,13 @@ const Notifications = (() => {
           recipientInput.readOnly = true;
         }
       } else {
+        // Default (email) — show text input
+        recipientSlack.classList.add('hidden');
+        recipientSlack.disabled = true;
+        recipientSlack.required = false;
+        recipientInput.classList.remove('hidden');
+        recipientInput.disabled = false;
+        recipientInput.required = true;
         if (recipientInput.readOnly) {
           recipientInput.value = '';
           recipientInput.readOnly = false;
@@ -64,8 +99,12 @@ const Notifications = (() => {
       msg.className = 'msg';
       msg.style.display = 'none';
 
+      const recipient = form.channel.value === 'slack'
+        ? document.getElementById('recipient-slack').value
+        : form.recipient.value;
+
       const data = {
-        recipient: form.recipient.value,
+        recipient: recipient,
         channel: form.channel.value,
         subject: form.subject.value,
         body: form.body.value,
@@ -95,6 +134,14 @@ const Notifications = (() => {
         form.reset();
         templateSection.classList.add('hidden');
         scheduleSection.classList.add('hidden');
+        // Reset recipient fields to default (email) state
+        recipientSlack.classList.add('hidden');
+        recipientSlack.disabled = true;
+        recipientSlack.required = false;
+        recipientInput.classList.remove('hidden');
+        recipientInput.disabled = false;
+        recipientInput.required = true;
+        recipientInput.readOnly = false;
       } catch (err) {
         showMsg(msg, 'error', err.message);
       }
