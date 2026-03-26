@@ -24,7 +24,7 @@ func New(cfg Config) *SendGridSender {
 func (s *SendGridSender) Send(msg email.Message) error {
 	from := sgmail.NewEmail("", msg.From)
 	to := sgmail.NewEmail("", msg.To)
-	message := sgmail.NewSingleEmail(from, msg.Subject, to, msg.Body, "")
+	message := sgmail.NewSingleEmail(from, msg.Subject, to, msg.Body, msg.Body)
 
 	client := sendgrid.NewSendClient(s.cfg.APIKey)
 	resp, err := client.Send(message)
