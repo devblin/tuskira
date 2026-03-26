@@ -25,12 +25,15 @@ type CreateTemplateRequest struct {
 }
 
 func (h *TemplateHandler) Create(c echo.Context) error {
+	userID := c.Get("user_id").(uint)
+
 	var req CreateTemplateRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 	}
 
 	t := &model.Template{
+		UserID:  userID,
 		Name:    req.Name,
 		Channel: req.Channel,
 		Subject: req.Subject,
@@ -59,7 +62,8 @@ func (h *TemplateHandler) GetByID(c echo.Context) error {
 }
 
 func (h *TemplateHandler) List(c echo.Context) error {
-	templates, err := h.svc.List()
+	userID := c.Get("user_id").(uint)
+	templates, err := h.svc.List(userID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}

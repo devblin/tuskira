@@ -87,11 +87,12 @@ func main() {
 	sched.SetHandler(func(ctx context.Context, externalID string, payload []byte) error {
 		var data struct {
 			NotificationID uint `json:"notification_id"`
+			UserID         uint `json:"user_id"`
 		}
 		if err := json.Unmarshal(payload, &data); err != nil {
 			return fmt.Errorf("failed to unmarshal scheduled job payload: %w", err)
 		}
-		_, err := notifSvc.SendByID(data.NotificationID)
+		_, err := notifSvc.SendByID(data.NotificationID, data.UserID)
 		return err
 	})
 

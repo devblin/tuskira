@@ -20,6 +20,11 @@ const Channels = (() => {
       }
     });
 
+    // Email add provider button
+    document.querySelector('.email-add-provider').addEventListener('click', () => {
+      addEmailProviderBlock(document.getElementById('email-providers'));
+    });
+
     // In-App SSE controls
     document.getElementById('inapp-connect-btn').addEventListener('click', () => {
       const connId = document.getElementById('inapp-connection-id').value;
@@ -66,11 +71,10 @@ const Channels = (() => {
     const config = cfg.config || {};
 
     if (cfg.channel === 'email') {
-      card.querySelectorAll('.ch-field').forEach(input => {
-        input.value = config[input.dataset.key] || '';
-      });
-      const tlsCheck = card.querySelector('.ch-field-bool[data-key="tls"]');
-      if (tlsCheck) tlsCheck.checked = !!config.tls;
+      const container = document.getElementById('email-providers');
+      container.innerHTML = '';
+      const providers = config.providers || [];
+      providers.forEach(p => addEmailProviderBlock(container, p));
     } else if (cfg.channel === 'slack') {
       const tokenInput = card.querySelector('.ch-field[data-key="bot_token"]');
       if (tokenInput) tokenInput.value = config.bot_token || '';
@@ -96,13 +100,17 @@ const Channels = (() => {
 
   function collectConfig(channel, card) {
     if (channel === 'email') {
-      const config = {};
-      card.querySelectorAll('.ch-field').forEach(input => {
-        config[input.dataset.key] = input.value.trim();
+      const providers = [];
+      card.querySelectorAll('.email-provider-block').forEach(block => {
+        const p = {};
+        block.querySelectorAll('.ep-field').forEach(input => {
+          p[input.dataset.key] = input.value.trim();
+        });
+        const tlsCheck = block.querySelector('.ep-field-bool[data-key="tls"]');
+        if (tlsCheck) p.tls = tlsCheck.checked;
+        providers.push(p);
       });
-      const tlsCheck = card.querySelector('.ch-field-bool[data-key="tls"]');
-      if (tlsCheck) config.tls = tlsCheck.checked;
-      return config;
+      return { providers };
     }
 
     if (channel === 'slack') {
@@ -162,9 +170,16 @@ const Channels = (() => {
     const card = document.querySelector(`.channel-card[data-channel="${channel}"]`);
     if (!card) return;
     card.querySelector('.ch-enabled').checked = false;
-    card.querySelectorAll('.ch-field').forEach(input => { input.value = ''; });
+    card.querySelectorAll('.ch-field').forEach(input => {
+      if (input.tagName === 'SELECT') {
+        input.selectedIndex = 0;
+      } else {
+        input.value = '';
+      }
+    });
     const tlsCheck = card.querySelector('.ch-field-bool[data-key="tls"]');
     if (tlsCheck) tlsCheck.checked = false;
+    if (channel === 'email') document.getElementById('email-providers').innerHTML = '';
     const slackCh = card.querySelector('.slack-channels');
     if (slackCh) slackCh.innerHTML = '';
 
@@ -292,6 +307,65 @@ const Channels = (() => {
     const el = document.createElement('span');
     el.textContent = s;
     return el.innerHTML;
+  }
+
+  function addEmailProviderBlock(container, data) {
+    const d = data || {};
+    const provider = d.provider || 'smtp';
+    const block = document.createElement('div');
+    block.className = 'email-provider-block';
+    block.innerHTML =
+      '<div class="ep-header">' +
+        '<select class="ep-field ep-provider-select" data-key="provider" style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;background:#fff;cursor:pointer;outline:none">' +
+          '<option value="smtp"' + (provider === 'smtp' ? ' selected' : '') + '>SMTP</option>' +
+          '<option value="sendgrid"' + (provider === 'sendgrid' ? ' selected' : '') + '>SendGrid</option>' +
+        '</select>' +
+        '<button type="button" class="ep-remove">&times;</button>' +
+      '</div>' +
+      '<div class="ep-smtp-fields' + (provider === 'sendgrid' ? ' hidden' : '') + '">' +
+        '<div class="form-group"><label>SMTP Host</label>' +
+          '<input type="text" class="ep-field" data-key="host" placeholder="smtp.example.com" value="' + escAttr(d.host) + '"></div>' +
+        '<div class="form-group"><label>Port</label>' +
+          '<input type="text" class="ep-field" data-key="port" placeholder="587" value="' + escAttr(d.port) + '"></div>' +
+        '<div class="form-group"><label>Username</label>' +
+          '<input type="text" class="ep-field" data-key="username" placeholder="user@example.com" value="' + escAttr(d.username) + '"></div>' +
+        '<div class="form-group"><label>Password</label>' +
+          '<input type="password" class="ep-field" data-key="password" placeholder="password" value="' + escAttr(d.password) + '"></div>' +
+        '<div class="toggle-row">' +
+          '<input type="checkbox" class="ep-field-bool" data-key="tls"' + (d.tls ? ' checked' : '') + '>' +
+          '<label>TLS</label></div>' +
+      '</div>' +
+      '<div class="ep-sendgrid-fields' + (provider !== 'sendgrid' ? ' hidden' : '') + '">' +
+        '<div class="form-group"><label>API Key</label>' +
+          '<input type="password" class="ep-field" data-key="api_key" placeholder="SG.xxxx..." value="' + escAttr(d.api_key) + '"></div>' +
+      '</div>' +
+      '<div class="form-group"><label>From Address</label>' +
+        '<input type="text" class="ep-field" data-key="from" placeholder="noreply@example.com" value="' + escAttr(d.from) + '"></div>';
+
+    // Provider toggle within this block
+    block.querySelector('.ep-provider-select').addEventListener('change', (e) => {
+      const smtp = block.querySelector('.ep-smtp-fields');
+      const sg = block.querySelector('.ep-sendgrid-fields');
+      if (e.target.value === 'sendgrid') {
+        smtp.classList.add('hidden');
+        sg.classList.remove('hidden');
+      } else {
+        smtp.classList.remove('hidden');
+        sg.classList.add('hidden');
+      }
+    });
+
+    // Remove button
+    block.querySelector('.ep-remove').addEventListener('click', () => {
+      block.remove();
+    });
+
+    container.appendChild(block);
+  }
+
+  function escAttr(val) {
+    if (!val) return '';
+    return String(val).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   }
 
   function addSlackChannelRow(container, id, name) {

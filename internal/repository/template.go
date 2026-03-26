@@ -25,8 +25,8 @@ func (r *TemplateRepository) FindByID(id uint) (*model.Template, error) {
 	return &t, nil
 }
 
-func (r *TemplateRepository) FindAll() ([]model.Template, error) {
+func (r *TemplateRepository) FindAll(userID uint) ([]model.Template, error) {
 	var templates []model.Template
-	err := r.db.Find(&templates).Error
+	err := r.db.Where("user_id = ?", userID).Find(&templates).Error
 	return templates, err
 }

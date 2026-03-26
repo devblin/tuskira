@@ -9,6 +9,7 @@ require (
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/riverqueue/river v0.30.2
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.30.2
+	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
 	github.com/slack-go/slack v0.20.0
 	github.com/wneessen/go-mail v0.7.2
 	golang.org/x/crypto v0.39.0
@@ -34,6 +35,7 @@ require (
 	github.com/riverqueue/river/rivershared v0.30.2 // indirect
 	github.com/riverqueue/river/rivertype v0.30.2 // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
+	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.2.0 // indirect

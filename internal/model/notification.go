@@ -50,6 +50,7 @@ const (
 
 type Notification struct {
 	gorm.Model
+	UserID     uint       `json:"user_id" gorm:"not null;index"`
 	Recipient  string     `json:"recipient" gorm:"not null"`
 	Channel    Channel    `json:"channel" gorm:"type:varchar(20);not null"`
 	Subject    string     `json:"subject"`
@@ -57,7 +58,8 @@ type Notification struct {
 	Status     Status     `json:"status" gorm:"type:varchar(20);default:'pending'"`
 	TemplateID *uint      `json:"template_id"`
 	Template   *Template  `json:"template,omitempty" gorm:"foreignKey:TemplateID"`
-	TemplateData TemplateData `json:"template_data,omitempty" gorm:"type:jsonb"`
-	ScheduleAt   *time.Time   `json:"schedule_at"`
+	TemplateData   TemplateData   `json:"template_data,omitempty" gorm:"type:jsonb"`
+	ProviderConfig ChannelConfigData `json:"provider_config,omitempty" gorm:"type:jsonb"`
+	ScheduleAt     *time.Time   `json:"schedule_at"`
 	SentAt       *time.Time   `json:"sent_at"`
 }

@@ -15,7 +15,7 @@ func NewChannelConfigRepository(db *gorm.DB) *ChannelConfigRepository {
 
 func (r *ChannelConfigRepository) Upsert(cfg *model.ChannelConfig) error {
 	var existing model.ChannelConfig
-	err := r.db.Where("channel = ?", cfg.Channel).First(&existing).Error
+	err := r.db.Where("channel = ? AND user_id = ?", cfg.Channel, cfg.UserID).First(&existing).Error
 	if err == gorm.ErrRecordNotFound {
 		return r.db.Create(cfg).Error
 	}
@@ -27,20 +27,20 @@ func (r *ChannelConfigRepository) Upsert(cfg *model.ChannelConfig) error {
 	return r.db.Save(&existing).Error
 }
 
-func (r *ChannelConfigRepository) FindByChannel(channel model.Channel) (*model.ChannelConfig, error) {
+func (r *ChannelConfigRepository) FindByChannel(channel model.Channel, userID uint) (*model.ChannelConfig, error) {
 	var cfg model.ChannelConfig
-	if err := r.db.Where("channel = ?", channel).First(&cfg).Error; err != nil {
+	if err := r.db.Where("channel = ? AND user_id = ?", channel, userID).First(&cfg).Error; err != nil {
 		return nil, err
 	}
 	return &cfg, nil
 }
 
-func (r *ChannelConfigRepository) FindAll() ([]model.ChannelConfig, error) {
+func (r *ChannelConfigRepository) FindAll(userID uint) ([]model.ChannelConfig, error) {
 	var configs []model.ChannelConfig
-	err := r.db.Order("channel asc").Find(&configs).Error
+	err := r.db.Where("user_id = ?", userID).Order("channel asc").Find(&configs).Error
 	return configs, err
 }
 
-func (r *ChannelConfigRepository) Delete(channel model.Channel) error {
-	return r.db.Where("channel = ?", channel).Delete(&model.ChannelConfig{}).Error
+func (r *ChannelConfigRepository) Delete(channel model.Channel, userID uint) error {
+	return r.db.Where("channel = ? AND user_id = ?", channel, userID).Delete(&model.ChannelConfig{}).Error
 }

@@ -20,8 +20,35 @@ const Notifications = (() => {
     const channelSelect = document.getElementById('channel');
     const recipientInput = document.getElementById('recipient');
     const recipientSlack = document.getElementById('recipient-slack');
+    const emailProviderGroup = document.getElementById('email-provider-group');
+    const emailProviderSelect = document.getElementById('email-provider-select');
+
+    let _emailProviders = [];
 
     channelSelect.addEventListener('change', async () => {
+      // Show/hide email provider dropdown
+      if (channelSelect.value === 'email') {
+        emailProviderSelect.innerHTML = '<option value="">-- Select provider --</option>';
+        _emailProviders = [];
+        try {
+          const cfg = await API.getChannelConfig('email');
+          if (cfg && cfg.config && cfg.config.providers) {
+            _emailProviders = cfg.config.providers;
+            _emailProviders.forEach((p, i) => {
+              const opt = document.createElement('option');
+              opt.value = i;
+              const label = (p.provider || 'smtp').toUpperCase();
+              const from = p.from ? ' (' + p.from + ')' : '';
+              opt.textContent = label + from;
+              emailProviderSelect.appendChild(opt);
+            });
+          }
+        } catch (_) {}
+        emailProviderGroup.classList.remove('hidden');
+      } else {
+        emailProviderGroup.classList.add('hidden');
+      }
+
       if (channelSelect.value === 'slack') {
         // Populate slack channel dropdown
         recipientSlack.innerHTML = '<option value="">-- Select Slack channel --</option>';
@@ -94,6 +121,9 @@ const Notifications = (() => {
       addKVRow();
     });
 
+    // Trigger initial population for the default channel (email)
+    channelSelect.dispatchEvent(new Event('change'));
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       msg.className = 'msg';
@@ -109,6 +139,13 @@ const Notifications = (() => {
         subject: form.subject.value,
         body: form.body.value,
       };
+
+      if (form.channel.value === 'email' && emailProviderSelect.value !== '') {
+        const idx = parseInt(emailProviderSelect.value);
+        if (_emailProviders[idx]) {
+          data.provider_config = _emailProviders[idx];
+        }
+      }
 
       if (useTemplate.checked) {
         const tmplId = parseInt(document.getElementById('template-select').value);
@@ -142,6 +179,7 @@ const Notifications = (() => {
         recipientInput.disabled = false;
         recipientInput.required = true;
         recipientInput.readOnly = false;
+        emailProviderGroup.classList.add('hidden');
       } catch (err) {
         showMsg(msg, 'error', err.message);
       }

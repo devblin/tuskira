@@ -32,7 +32,8 @@ func (h *SSEHandler) Stream(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "connection_id query param required"})
 	}
 
-	cfg, err := h.channelConfigSvc.GetByChannel(model.ChannelInApp)
+	userID := c.Get("user_id").(uint)
+	cfg, err := h.channelConfigSvc.GetByChannel(model.ChannelInApp, userID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "inapp channel is not configured"})
 	}

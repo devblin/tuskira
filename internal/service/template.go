@@ -26,8 +26,8 @@ func (s *TemplateService) GetByID(id uint) (*model.Template, error) {
 	return s.repo.FindByID(id)
 }
 
-func (s *TemplateService) List() ([]model.Template, error) {
-	return s.repo.FindAll()
+func (s *TemplateService) List(userID uint) ([]model.Template, error) {
+	return s.repo.FindAll(userID)
 }
 
 // extractVariables parses Go template strings and returns sorted variable names (e.g. {{.Name}} -> "Name").

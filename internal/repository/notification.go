@@ -29,27 +29,27 @@ func (r *NotificationRepository) FindByID(id uint) (*model.Notification, error) 
 	return &n, nil
 }
 
-func (r *NotificationRepository) FindByRecipient(recipient string) ([]model.Notification, error) {
+func (r *NotificationRepository) FindByRecipient(recipient string, userID uint) ([]model.Notification, error) {
 	var notifications []model.Notification
-	err := r.db.Where("recipient = ?", recipient).Order("created_at desc").Find(&notifications).Error
+	err := r.db.Where("recipient = ? AND user_id = ?", recipient, userID).Order("created_at desc").Find(&notifications).Error
 	return notifications, err
 }
 
-func (r *NotificationRepository) FindPendingScheduled() ([]model.Notification, error) {
+func (r *NotificationRepository) FindPendingScheduled(userID uint) ([]model.Notification, error) {
 	var notifications []model.Notification
-	err := r.db.Where("status = ?", model.StatusScheduled).Order("schedule_at asc").Find(&notifications).Error
+	err := r.db.Where("status = ? AND user_id = ?", model.StatusScheduled, userID).Order("schedule_at asc").Find(&notifications).Error
 	return notifications, err
 }
 
-func (r *NotificationRepository) FindPending() ([]model.Notification, error) {
+func (r *NotificationRepository) FindPending(userID uint) ([]model.Notification, error) {
 	var notifications []model.Notification
-	err := r.db.Where("status = ?", model.StatusPending).Order("created_at asc").Find(&notifications).Error
+	err := r.db.Where("status = ? AND user_id = ?", model.StatusPending, userID).Order("created_at asc").Find(&notifications).Error
 	return notifications, err
 }
 
-func (r *NotificationRepository) FindSent() ([]model.Notification, error) {
+func (r *NotificationRepository) FindSent(userID uint) ([]model.Notification, error) {
 	var notifications []model.Notification
-	err := r.db.Where("status IN ?", []model.Status{model.StatusSent, model.StatusFailed}).Order("created_at desc").Find(&notifications).Error
+	err := r.db.Where("status IN ? AND user_id = ?", []model.Status{model.StatusSent, model.StatusFailed}, userID).Order("created_at desc").Find(&notifications).Error
 	return notifications, err
 }
 

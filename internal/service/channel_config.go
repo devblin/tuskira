@@ -20,7 +20,7 @@ func NewChannelConfigService(repo *repository.ChannelConfigRepository) *ChannelC
 }
 
 func (s *ChannelConfigService) Upsert(cfg *model.ChannelConfig) error {
-	processed, err := s.processConfig(cfg.Channel, cfg.Config)
+	processed, err := s.processConfig(cfg.Channel, cfg.Config, cfg.UserID)
 	if err != nil {
 		return fmt.Errorf("invalid config for channel %s: %w", cfg.Channel, err)
 	}
@@ -28,21 +28,21 @@ func (s *ChannelConfigService) Upsert(cfg *model.ChannelConfig) error {
 	return s.repo.Upsert(cfg)
 }
 
-func (s *ChannelConfigService) GetByChannel(channel model.Channel) (*model.ChannelConfig, error) {
-	return s.repo.FindByChannel(channel)
+func (s *ChannelConfigService) GetByChannel(channel model.Channel, userID uint) (*model.ChannelConfig, error) {
+	return s.repo.FindByChannel(channel, userID)
 }
 
-func (s *ChannelConfigService) List() ([]model.ChannelConfig, error) {
-	return s.repo.FindAll()
+func (s *ChannelConfigService) List(userID uint) ([]model.ChannelConfig, error) {
+	return s.repo.FindAll(userID)
 }
 
-func (s *ChannelConfigService) Delete(channel model.Channel) error {
-	return s.repo.Delete(channel)
+func (s *ChannelConfigService) Delete(channel model.Channel, userID uint) error {
+	return s.repo.Delete(channel, userID)
 }
 
 // getExistingConnectionID loads the current inapp config from DB to preserve the connection ID across updates.
-func (s *ChannelConfigService) getExistingConnectionID(channel model.Channel) string {
-	existing, err := s.repo.FindByChannel(channel)
+func (s *ChannelConfigService) getExistingConnectionID(channel model.Channel, userID uint) string {
+	existing, err := s.repo.FindByChannel(channel, userID)
 	if err != nil || existing == nil {
 		return ""
 	}
@@ -54,18 +54,29 @@ func (s *ChannelConfigService) getExistingConnectionID(channel model.Channel) st
 }
 
 // processConfig validates and normalizes channel-specific configuration.
-func (s *ChannelConfigService) processConfig(channel model.Channel, data model.ChannelConfigData) (model.ChannelConfigData, error) {
+func (s *ChannelConfigService) processConfig(channel model.Channel, data model.ChannelConfigData, userID uint) (model.ChannelConfigData, error) {
 	switch channel {
 	case model.ChannelEmail:
 		var cfg model.EmailChannelConfig
 		if err := json.Unmarshal(data, &cfg); err != nil {
 			return nil, fmt.Errorf("invalid email config: %w", err)
 		}
-		if cfg.Host == "" {
-			return nil, fmt.Errorf("host is required")
+		if len(cfg.Providers) == 0 {
+			return nil, fmt.Errorf("at least one email provider is required")
 		}
-		if cfg.From == "" {
-			return nil, fmt.Errorf("from is required")
+		for i, p := range cfg.Providers {
+			if p.Provider == "sendgrid" {
+				if p.APIKey == "" {
+					return nil, fmt.Errorf("provider %d: api_key is required for sendgrid", i+1)
+				}
+			} else {
+				if p.Host == "" {
+					return nil, fmt.Errorf("provider %d: host is required", i+1)
+				}
+			}
+			if p.From == "" {
+				return nil, fmt.Errorf("provider %d: from is required", i+1)
+			}
 		}
 		return data, nil
 	case model.ChannelSlack:
@@ -85,7 +96,7 @@ func (s *ChannelConfigService) processConfig(channel model.Channel, data model.C
 			}
 		}
 		if cfg.ConnectionID == "" {
-			cfg.ConnectionID = s.getExistingConnectionID(channel)
+			cfg.ConnectionID = s.getExistingConnectionID(channel, userID)
 		}
 		if cfg.ConnectionID == "" {
 			cfg.ConnectionID = uuid.New().String()

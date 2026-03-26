@@ -44,20 +44,27 @@ func (c *ChannelConfigData) UnmarshalJSON(data []byte) error {
 
 type ChannelConfig struct {
 	gorm.Model
-	Channel Channel           `json:"channel" gorm:"type:varchar(20);uniqueIndex;not null"`
+	UserID  uint              `json:"user_id" gorm:"not null;uniqueIndex:idx_user_channel"`
+	Channel Channel           `json:"channel" gorm:"type:varchar(20);not null;uniqueIndex:idx_user_channel"`
 	Enabled bool              `json:"enabled" gorm:"default:false"`
 	Config  ChannelConfigData `json:"config" gorm:"type:jsonb;default:'{}'"`
 }
 
 // Typed config structs for each channel
 
-type EmailChannelConfig struct {
+type EmailProviderConfig struct {
+	Provider string `json:"provider"`
 	Host     string `json:"host"`
 	Port     string `json:"port"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 	From     string `json:"from"`
 	TLS      bool   `json:"tls"`
+	APIKey   string `json:"api_key"`
+}
+
+type EmailChannelConfig struct {
+	Providers []EmailProviderConfig `json:"providers"`
 }
 
 type SlackChannelConfig struct {

@@ -31,7 +31,8 @@ func (s *StringSlice) Scan(value any) error {
 
 type Template struct {
 	gorm.Model
-	Name      string      `json:"name" gorm:"uniqueIndex;not null"`
+	UserID    uint        `json:"user_id" gorm:"not null;uniqueIndex:idx_user_template_name"`
+	Name      string      `json:"name" gorm:"not null;uniqueIndex:idx_user_template_name"`
 	Channel   Channel     `json:"channel" gorm:"type:varchar(20);not null"`
 	Subject   string      `json:"subject"`
 	Body      string      `json:"body" gorm:"type:text;not null"`

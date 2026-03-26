@@ -40,7 +40,8 @@ func NewNotificationService(
 
 // Send renders the template (if set), schedules the notification (if future time),
 // or sends it immediately via the appropriate channel provider.
-func (s *NotificationService) Send(n *model.Notification) error {
+func (s *NotificationService) Send(n *model.Notification, userID uint) error {
+	n.UserID = userID
 	// Render subject/body from template if a template ID is provided
 	if n.TemplateID != nil {
 		tmpl, err := s.repo.FindTemplateByID(*n.TemplateID)
@@ -70,7 +71,7 @@ func (s *NotificationService) Send(n *model.Notification) error {
 		if err := s.repo.Create(n); err != nil {
 			return err
 		}
-		payload, err := json.Marshal(map[string]uint{"notification_id": n.ID})
+		payload, err := json.Marshal(map[string]uint{"notification_id": n.ID, "user_id": userID})
 		if err != nil {
 			return fmt.Errorf("failed to marshal payload: %w", err)
 		}
@@ -81,7 +82,7 @@ func (s *NotificationService) Send(n *model.Notification) error {
 		})
 	}
 
-	p, rawCfg, err := s.getProviderAndConfig(n.Channel)
+	p, rawCfg, err := s.getProviderAndConfig(n.Channel, userID)
 	if err != nil {
 		return err
 	}
@@ -103,8 +104,8 @@ func (s *NotificationService) Send(n *model.Notification) error {
 		return s.repo.Create(n)
 	}
 
-	// Email/Slack: send with exponential backoff retry
-	if err := s.sendWithRetry(p, n, rawCfg); err != nil {
+	// Email/Slack: send immediately (no retry for immediate sends)
+	if err := p.Send(n, rawCfg); err != nil {
 		n.Status = model.StatusFailed
 		s.repo.Create(n)
 		return fmt.Errorf("failed to send notification: %w", err)
@@ -120,30 +121,30 @@ func (s *NotificationService) GetByID(id uint) (*model.Notification, error) {
 	return s.repo.FindByID(id)
 }
 
-func (s *NotificationService) ListByRecipient(recipient string) ([]model.Notification, error) {
-	return s.repo.FindByRecipient(recipient)
+func (s *NotificationService) ListByRecipient(recipient string, userID uint) ([]model.Notification, error) {
+	return s.repo.FindByRecipient(recipient, userID)
 }
 
-func (s *NotificationService) ListSent() ([]model.Notification, error) {
-	return s.repo.FindSent()
+func (s *NotificationService) ListSent(userID uint) ([]model.Notification, error) {
+	return s.repo.FindSent(userID)
 }
 
-func (s *NotificationService) ListPending() ([]model.Notification, error) {
-	return s.repo.FindPending()
+func (s *NotificationService) ListPending(userID uint) ([]model.Notification, error) {
+	return s.repo.FindPending(userID)
 }
 
-func (s *NotificationService) GetPendingScheduled() ([]model.Notification, error) {
-	return s.repo.FindPendingScheduled()
+func (s *NotificationService) GetPendingScheduled(userID uint) ([]model.Notification, error) {
+	return s.repo.FindPendingScheduled(userID)
 }
 
 // SendByID sends a previously scheduled notification immediately.
-func (s *NotificationService) SendByID(id uint) (*model.Notification, error) {
+func (s *NotificationService) SendByID(id uint, userID uint) (*model.Notification, error) {
 	n, err := s.findScheduled(id)
 	if err != nil {
 		return nil, err
 	}
 
-	p, rawCfg, err := s.getProviderAndConfig(n.Channel)
+	p, rawCfg, err := s.getProviderAndConfig(n.Channel, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -229,8 +230,8 @@ func (s *NotificationService) findScheduled(id uint) (*model.Notification, error
 }
 
 // getProviderAndConfig looks up the channel's config and provider in one step.
-func (s *NotificationService) getProviderAndConfig(channel model.Channel) (provider.Provider, json.RawMessage, error) {
-	cfg, err := s.configRepo.FindByChannel(channel)
+func (s *NotificationService) getProviderAndConfig(channel model.Channel, userID uint) (provider.Provider, json.RawMessage, error) {
+	cfg, err := s.configRepo.FindByChannel(channel, userID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("channel %s is not configured: %w", channel, err)
 	}

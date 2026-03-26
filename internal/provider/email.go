@@ -7,10 +7,11 @@ import (
 	"strconv"
 
 	"github.com/devblin/tuskira/internal/model"
-	"github.com/wneessen/go-mail"
+	pkgemail "github.com/devblin/tuskira/pkg/email"
+	"github.com/devblin/tuskira/pkg/email/sendgrid"
+	"github.com/devblin/tuskira/pkg/email/smtp"
 )
 
-// EmailProvider sends notifications via SMTP using go-mail.
 type EmailProvider struct{}
 
 func NewEmailProvider() *EmailProvider {
@@ -22,55 +23,83 @@ func (p *EmailProvider) Channel() model.Channel {
 }
 
 func (p *EmailProvider) Send(n *model.Notification, rawCfg json.RawMessage) error {
-	var cfg model.EmailChannelConfig
-	if err := json.Unmarshal(rawCfg, &cfg); err != nil {
-		return fmt.Errorf("invalid email channel config: %w", err)
-	}
+	var provCfg model.EmailProviderConfig
 
-	if cfg.Host == "" {
-		return fmt.Errorf("SMTP host not configured")
-	}
-
-	port := 587
-	if cfg.Port != "" {
-		var err error
-		port, err = strconv.Atoi(cfg.Port)
-		if err != nil {
-			return fmt.Errorf("invalid SMTP port: %w", err)
+	// Use provider config from notification if available (selected by user at send time)
+	if len(n.ProviderConfig) > 0 {
+		if err := json.Unmarshal(n.ProviderConfig, &provCfg); err != nil {
+			return fmt.Errorf("invalid provider config on notification: %w", err)
 		}
-	}
-
-	msg := mail.NewMsg()
-	if err := msg.From(cfg.From); err != nil {
-		return fmt.Errorf("invalid from address: %w", err)
-	}
-	if err := msg.To(n.Recipient); err != nil {
-		return fmt.Errorf("invalid recipient address: %w", err)
-	}
-	msg.Subject(n.Subject)
-	msg.SetBodyString(mail.TypeTextPlain, n.Body)
-
-	opts := []mail.Option{
-		mail.WithPort(port),
-		mail.WithUsername(cfg.Username),
-		mail.WithPassword(cfg.Password),
-		mail.WithSMTPAuth(mail.SMTPAuthPlain),
-	}
-	if cfg.TLS {
-		opts = append(opts, mail.WithSSLPort(false))
 	} else {
-		opts = append(opts, mail.WithTLSPortPolicy(mail.TLSOpportunistic))
+		// Fall back to first provider in channel config
+		var cfg model.EmailChannelConfig
+		if err := json.Unmarshal(rawCfg, &cfg); err != nil {
+			return fmt.Errorf("invalid email channel config: %w", err)
+		}
+		if len(cfg.Providers) == 0 {
+			return fmt.Errorf("no email providers configured")
+		}
+		provCfg = cfg.Providers[0]
 	}
 
-	client, err := mail.NewClient(cfg.Host, opts...)
+	sender, err := p.resolveSender(provCfg)
 	if err != nil {
-		return fmt.Errorf("failed to create mail client: %w", err)
+		return err
 	}
 
-	if err := client.DialAndSend(msg); err != nil {
+	msg := pkgemail.Message{
+		From:    provCfg.From,
+		To:      n.Recipient,
+		Subject: n.Subject,
+		Body:    n.Body,
+	}
+
+	if err := sender.Send(msg); err != nil {
 		return fmt.Errorf("failed to send email to %s: %w", n.Recipient, err)
 	}
 
-	log.Printf("[EMAIL] sent to %s | Subject: %s", n.Recipient, n.Subject)
+	provider := provCfg.Provider
+	if provider == "" {
+		provider = "smtp"
+	}
+	log.Printf("[EMAIL:%s] sent to %s | Subject: %s", provider, n.Recipient, n.Subject)
 	return nil
+}
+
+func (p *EmailProvider) resolveSender(cfg model.EmailProviderConfig) (pkgemail.Sender, error) {
+	provider := cfg.Provider
+	if provider == "" {
+		provider = "smtp"
+	}
+
+	switch provider {
+	case "smtp":
+		if cfg.Host == "" {
+			return nil, fmt.Errorf("SMTP host not configured")
+		}
+		port := 587
+		if cfg.Port != "" {
+			var err error
+			port, err = strconv.Atoi(cfg.Port)
+			if err != nil {
+				return nil, fmt.Errorf("invalid SMTP port: %w", err)
+			}
+		}
+		return smtp.New(smtp.Config{
+			Host:     cfg.Host,
+			Port:     port,
+			Username: cfg.Username,
+			Password: cfg.Password,
+			TLS:      cfg.TLS,
+		}), nil
+	case "sendgrid":
+		if cfg.APIKey == "" {
+			return nil, fmt.Errorf("SendGrid API key not configured")
+		}
+		return sendgrid.New(sendgrid.Config{
+			APIKey: cfg.APIKey,
+		}), nil
+	default:
+		return nil, fmt.Errorf("unsupported email provider: %s", provider)
+	}
 }

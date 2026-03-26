@@ -84,6 +84,12 @@
               <option value="inapp">In-App</option>
             </select>
           </div>
+          <div class="form-group hidden" id="email-provider-group">
+            <label for="email-provider-select">Email Provider</label>
+            <select id="email-provider-select">
+              <option value="">-- Select provider --</option>
+            </select>
+          </div>
           <div class="form-group">
             <label for="subject">Subject</label>
             <input type="text" id="subject" name="subject">
@@ -249,37 +255,16 @@
           <!-- Email -->
           <div class="channel-card" data-channel="email">
             <div class="channel-card-header">
-              <h4>Email (SMTP)</h4>
+              <h4>Email</h4>
               <label class="toggle-switch">
                 <input type="checkbox" class="ch-enabled">
                 <span>Enabled</span>
               </label>
             </div>
             <div class="channel-card-body">
-              <div class="form-group">
-                <label>SMTP Host</label>
-                <input type="text" class="ch-field" data-key="host" placeholder="smtp.example.com">
-              </div>
-              <div class="form-group">
-                <label>Port</label>
-                <input type="text" class="ch-field" data-key="port" placeholder="587">
-              </div>
-              <div class="form-group">
-                <label>Username</label>
-                <input type="text" class="ch-field" data-key="username" placeholder="user@example.com">
-              </div>
-              <div class="form-group">
-                <label>Password</label>
-                <input type="password" class="ch-field" data-key="password" placeholder="password">
-              </div>
-              <div class="form-group">
-                <label>From Address</label>
-                <input type="text" class="ch-field" data-key="from" placeholder="noreply@example.com">
-              </div>
-              <div class="toggle-row">
-                <input type="checkbox" class="ch-field-bool" data-key="tls">
-                <label>TLS</label>
-              </div>
+              <label style="font-size:13px;font-weight:600;margin-bottom:8px;display:block">Providers</label>
+              <div id="email-providers"></div>
+              <button type="button" class="btn-add-kv email-add-provider">+ Add Provider</button>
             </div>
             <div class="channel-card-footer">
               <button class="btn btn-primary btn-sm ch-save">Save</button>

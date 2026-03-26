@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -19,28 +20,32 @@ func NewNotificationHandler(svc *service.NotificationService) *NotificationHandl
 }
 
 type SendRequest struct {
-	Recipient  string        `json:"recipient" validate:"required"`
-	Channel    model.Channel `json:"channel" validate:"required"`
-	Subject    string        `json:"subject"`
-	Body       string        `json:"body"`
-	TemplateID   *uint              `json:"template_id"`
-	TemplateData model.TemplateData `json:"template_data,omitempty"`
-	ScheduleAt   *string            `json:"schedule_at"` // RFC3339
+	Recipient     string            `json:"recipient" validate:"required"`
+	Channel       model.Channel     `json:"channel" validate:"required"`
+	Subject       string            `json:"subject"`
+	Body          string            `json:"body"`
+	TemplateID    *uint             `json:"template_id"`
+	TemplateData  model.TemplateData `json:"template_data,omitempty"`
+	ScheduleAt     *string           `json:"schedule_at"` // RFC3339
+	ProviderConfig json.RawMessage   `json:"provider_config,omitempty"`
 }
 
 func (h *NotificationHandler) Send(c echo.Context) error {
+	userID := c.Get("user_id").(uint)
+
 	var req SendRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 	}
 
 	n := &model.Notification{
-		Recipient:  req.Recipient,
-		Channel:    req.Channel,
-		Subject:    req.Subject,
-		Body:       req.Body,
-		TemplateID:   req.TemplateID,
-		TemplateData: req.TemplateData,
+		Recipient:     req.Recipient,
+		Channel:       req.Channel,
+		Subject:       req.Subject,
+		Body:          req.Body,
+		TemplateID:     req.TemplateID,
+		TemplateData:   req.TemplateData,
+		ProviderConfig: model.ChannelConfigData(req.ProviderConfig),
 	}
 
 	if req.ScheduleAt != nil {
@@ -51,7 +56,7 @@ func (h *NotificationHandler) Send(c echo.Context) error {
 		n.ScheduleAt = &t
 	}
 
-	if err := h.svc.Send(n); err != nil {
+	if err := h.svc.Send(n, userID); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
@@ -73,12 +78,13 @@ func (h *NotificationHandler) GetByID(c echo.Context) error {
 }
 
 func (h *NotificationHandler) ListByRecipient(c echo.Context) error {
+	userID := c.Get("user_id").(uint)
 	recipient := c.QueryParam("recipient")
 	if recipient == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "recipient query param required"})
 	}
 
-	notifications, err := h.svc.ListByRecipient(recipient)
+	notifications, err := h.svc.ListByRecipient(recipient, userID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -87,7 +93,8 @@ func (h *NotificationHandler) ListByRecipient(c echo.Context) error {
 }
 
 func (h *NotificationHandler) ListSent(c echo.Context) error {
-	notifications, err := h.svc.ListSent()
+	userID := c.Get("user_id").(uint)
+	notifications, err := h.svc.ListSent(userID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -95,7 +102,8 @@ func (h *NotificationHandler) ListSent(c echo.Context) error {
 }
 
 func (h *NotificationHandler) ListPending(c echo.Context) error {
-	notifications, err := h.svc.ListPending()
+	userID := c.Get("user_id").(uint)
+	notifications, err := h.svc.ListPending(userID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -103,7 +111,8 @@ func (h *NotificationHandler) ListPending(c echo.Context) error {
 }
 
 func (h *NotificationHandler) GetPendingScheduled(c echo.Context) error {
-	notifications, err := h.svc.GetPendingScheduled()
+	userID := c.Get("user_id").(uint)
+	notifications, err := h.svc.GetPendingScheduled(userID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -111,12 +120,14 @@ func (h *NotificationHandler) GetPendingScheduled(c echo.Context) error {
 }
 
 func (h *NotificationHandler) TriggerSend(c echo.Context) error {
+	userID := c.Get("user_id").(uint)
+
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid id"})
 	}
 
-	n, err := h.svc.SendByID(uint(id))
+	n, err := h.svc.SendByID(uint(id), userID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}

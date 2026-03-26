@@ -24,12 +24,15 @@ type UpsertChannelConfigRequest struct {
 }
 
 func (h *ChannelConfigHandler) Upsert(c echo.Context) error {
+	userID := c.Get("user_id").(uint)
+
 	var req UpsertChannelConfigRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 	}
 
 	cfg := &model.ChannelConfig{
+		UserID:  userID,
 		Channel: req.Channel,
 		Enabled: req.Enabled,
 		Config:  model.ChannelConfigData(req.Config),
@@ -39,7 +42,7 @@ func (h *ChannelConfigHandler) Upsert(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	updated, err := h.svc.GetByChannel(req.Channel)
+	updated, err := h.svc.GetByChannel(req.Channel, userID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -47,8 +50,9 @@ func (h *ChannelConfigHandler) Upsert(c echo.Context) error {
 }
 
 func (h *ChannelConfigHandler) GetByChannel(c echo.Context) error {
+	userID := c.Get("user_id").(uint)
 	channel := model.Channel(c.Param("channel"))
-	cfg, err := h.svc.GetByChannel(channel)
+	cfg, err := h.svc.GetByChannel(channel, userID)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "channel config not found"})
 	}
@@ -56,7 +60,8 @@ func (h *ChannelConfigHandler) GetByChannel(c echo.Context) error {
 }
 
 func (h *ChannelConfigHandler) List(c echo.Context) error {
-	configs, err := h.svc.List()
+	userID := c.Get("user_id").(uint)
+	configs, err := h.svc.List(userID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -64,8 +69,9 @@ func (h *ChannelConfigHandler) List(c echo.Context) error {
 }
 
 func (h *ChannelConfigHandler) Delete(c echo.Context) error {
+	userID := c.Get("user_id").(uint)
 	channel := model.Channel(c.Param("channel"))
-	if err := h.svc.Delete(channel); err != nil {
+	if err := h.svc.Delete(channel, userID); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 	return c.JSON(http.StatusNoContent, nil)

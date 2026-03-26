@@ -341,6 +341,53 @@ tr:hover { background: var(--bg); }
   cursor: pointer;
 }
 
+/* Email provider blocks */
+.email-provider-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 12px;
+  background: var(--bg);
+}
+
+.ep-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.ep-provider-select {
+  flex: 1;
+  margin-right: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s;
+  background: var(--surface);
+  -webkit-appearance: auto;
+  appearance: auto;
+  cursor: pointer;
+}
+
+.ep-provider-select:focus {
+  border-color: var(--primary);
+}
+
+.ep-remove {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0 4px;
+}
+
 /* Template list cards */
 .template-list {
   display: grid;
