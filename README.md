@@ -16,6 +16,10 @@ Written in Go. Uses PostgreSQL for storage.
 - **Web UI** — built-in dashboard for sending, managing, and configuring notifications
 - **Per-user channel config** — each user configures their own providers and channels
 
+## HLD
+
+![High Level Design](hld.png)
+
 ## Dev Setup
 
 Requires Docker.
